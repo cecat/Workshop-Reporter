@@ -7,9 +7,7 @@ We will implement a goal-driven agent loop that performs autonomous session extr
 To the extent possible we will vibe code to attempt to get a basic working system in place within 30 hours during the 
 [TPC25](tpc25.org) Hackathon.
 
-
-For the *big picture* objectives, see
-[README.md](./README.md)
+For the *big picture* objectives, see [README.md](./README.md)
 
 ---
 
