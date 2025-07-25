@@ -1,36 +1,76 @@
 # Workshop Reporter
 
-This project builds an agentic system that, given a URL for a scientific workshop and a
-shared Google Drive folder, can autonomously:
-- Parse the workshop website to identify sessions and metadata.
-- Extract key details: session titles, leaders, individual talks, and abstracts.
-- Examine documents in a shared Google Drive folder and infer which file corresponds to which session.
-- Match files to sessions using best-fit similarity based on title and content.
-- Flag mismatches or gaps and optionally prompt a human user for input.
-- Output a structured report of session metadata and associated documents.
+This project builds an agentic system that can autonomously organize workshop data by:
+- Taking a predefined list of workshop sessions with metadata
+- Examining local documents and inferring which file corresponds to which session
+- Matching files to sessions using best-fit similarity based on title and content
+- Flagging mismatches or gaps and optionally prompting a human user for input
+- Outputting a structured report of session metadata and associated documents
 
-A viable starter system would create a report from a breakout session at the 
-[TPC25](tpc25.org) conference, would create individual session reports, each drawing from
- the following data:
-1. URL for the session details (https://tpc25.org/sessions/) or a downloaded source file (in cases, like TPC25, where the server blocks crawlers).
-2. URL for the Google Folder (for TPC25: https://drive.google.com/drive/folders/17q5HVSHOhVkn9yCuNlxzQwy6kRZO_TnF?usp=sharing) which will hold two files, each with filename of the session name or acronym:
-    - *SessionName.csv* will be a 2-column CSV colleciton of {name, institution}
-    - *SessionName.doc* will hold all session discussion notes (single file for multi-session groups)
-3. URL for lightning talk data (for TPC25: https://docs.google.com/spreadsheets/d/1p6iK7sbqfjJVL1c3M4SSLpFO4O3Ez9RHUVLaG1RbcwE/edit?resourcekey=&gid=225247942#gid=225247942)
-3. Name or Acronym of the breakout session.
+The initial system targets breakout sessions from the [TPC25](https://tpc25.org) conference, working with these simplified inputs:
+
+## Input Data Sources
+
+1. **Session List** (JSON file): Pre-defined list of sessions with:
+   - Session name/acronym
+   - Session leaders
+   - Brief description or theme
+   - Expected file patterns
+
+2. **Local Documents Folder**: Contains downloaded files with patterns like:
+   - `SessionName.csv` - 2-column CSV collection of {name, institution}
+   - `SessionName.doc/.txt` - Session discussion notes
+
+3. **Lightning Talks Data** (CSV file): Downloaded spreadsheet with:
+   - Author, title, abstract, assigned session
+
+## Example Output
+
+The system generates a structured report like:
+```json
+{
+  "session_name": "Machine Learning Applications",
+  "leaders": ["Dr. Smith", "Prof. Johnson"],
+  "matched_files": {
+    "participants": "ML_Apps.csv",
+    "notes": "MachineLearning_Apps.doc"
+  },
+  "lightning_talks": ["Talk 1", "Talk 2"],
+  "confidence_score": 0.95
+}
+```
 ## Motivation
 
 Workshops and conferences often produce valuable information that is poorly organized across
 websites, emails, and shared drives. This project creates a generalizable agent that
 can extract and organize this information with minimal manual effort.
 
+## Technical Architecture
+
+```
+workshop-reporter/
+├── agent/          # Core agent loop and planning
+├── extractors/     # Document parsing and content extraction
+├── matchers/       # Session-document matching logic
+├── outputs/        # Report generation
+├── config/         # Configuration and sample data
+└── tests/          # Sample test data
+```
+
 ## Team Scope
 
 This project is designed for 4–5 developers over a 1–3 day hackathon. Contributors can focus on:
-- LLM prompting and tool design
-- Web scraping and parsing
-- Google Drive access and file analysis
+- LLM prompting and tool design for content extraction
+- Local file parsing and content analysis
+- Similarity matching algorithms (string + semantic)
 - Agent architecture and planning loop
-- Logging and human-in-the-loop interaction
+- Report generation and user interaction
+
+## Success Metrics
+
+- 80%+ accuracy in session-document matching
+- All sessions have at least one matched document
+- Clear confidence scores for manual review of low-confidence matches
+- Structured output ready for further processing
 
 See [PLAN.md](./PLAN.md) for technical design and implementation steps.
