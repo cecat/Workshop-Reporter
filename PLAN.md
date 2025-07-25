@@ -12,13 +12,15 @@ To the extent possible we will vibe code to attempt to get a basic working syste
 ## Phases and Tasks
 
 ### Phase 1: Setup and Inputs
-- [ ] Accept a workshop URL as input.
-- [ ] Accept a Google Drive folder URL (via API or download).
+- [ ] Accept a workshop URL (via API or downloaded html source).
+- [ ] Accept a Google Drive folder URL (via API or downloaded *session.csv* participants and *sessionname.doc* discussion notes)).
+- [ ] Accept a Google Sheets file URL (via API or download) with all lightning talks metadata (author, title, abstract, session name, etc.)
 - [ ] Initialize agent memory state (sessions list, documents list, match records, outstanding questions).
 
 ### Phase 2: Session Extraction
-- [ ] Scrape the workshop page (HTML or PDF).
-- [ ] Extract sessions, leaders, talk titles, and abstracts using LLM.
+- [ ] Scrape the workshop page (HTML).
+- [ ] Extract sessions, leaders, talk titles, and session abstracts using LLM.
+- [ ] Extract talk abstracts using LLM (from lightning talk metadata URL or downloaded CSV)
 - [ ] Store as structured metadata (e.g. JSON format).
 
 ### Phase 3: Document Loading and Representation
