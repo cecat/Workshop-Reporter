@@ -13,8 +13,8 @@ A viable starter system would create a report from a breakout session at the
 [TPC25](tpc25.org) conference, given the following data:
 1. URL for the session details (https://tpc25.org/sessions/) or a downloaded source file (in cases, like TPC25, where the server blocks crawlers).
 2. URL for the Google Folder (for TPC25: https://drive.google.com/drive/folders/17q5HVSHOhVkn9yCuNlxzQwy6kRZO_TnF?usp=sharing) which will hold two files, each with filename of the session name or acronym:
-  * SessionName.csv will be a 2-column CSV colleciton of {name, institution}
-  * SessionName.doc will hold all session discussion notes (single file for multi-session groups)
+  - SessionName.csv will be a 2-column CSV colleciton of {name, institution}
+  - SessionName.doc will hold all session discussion notes (single file for multi-session groups)
 3. URL for lightning talk data (for TPC25: https://docs.google.com/spreadsheets/d/1p6iK7sbqfjJVL1c3M4SSLpFO4O3Ez9RHUVLaG1RbcwE/edit?resourcekey=&gid=225247942#gid=225247942)
 3. Name or Acronym of the breakout session.
 ## Motivation
