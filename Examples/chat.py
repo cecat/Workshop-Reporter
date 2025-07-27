@@ -20,14 +20,26 @@ def load_secrets():
     try:
         with open('secrets.yml', 'r') as f:
             secrets = yaml.safe_load(f)
-        return secrets['openai']['api_key']
+
+        # Try different possible formats
+        if 'openai' in secrets and 'api_key' in secrets['openai']:
+            return secrets['openai']['api_key']
+        elif 'openai_api_key' in secrets:
+            return secrets['openai_api_key']
+        else:
+            raise KeyError("API key not found")
+
     except FileNotFoundError:
         print("Error: secrets.yml file not found!")
         print("Please create secrets.yml and add your OpenAI API key.")
         sys.exit(1)
     except KeyError:
         print("Error: API key not found in secrets.yml")
-        print("Please check the format of your secrets.yml file.")
+        print("Expected format:")
+        print("  openai:")
+        print("    api_key: your-key-here")
+        print("OR:")
+        print("  openai_api_key: your-key-here")
         sys.exit(1)
 
 def load_config():
