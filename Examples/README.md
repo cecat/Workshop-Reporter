@@ -5,9 +5,11 @@ This folder contains a very basic example of how to call LLMs from Python. It's 
 ## Files
 
 - **`chat.py`** - Main Python script that sends a prompt to OpenAI and prints the response
-- **`secrets.yml`** - Where you put your OpenAI API key (keep this private!)
+- **`secrets_template.yml`** - Template file showing proper format for your API key
+- **`secrets.yml`** - Where you put your OpenAI API key (create from template, keep private!)
 - **`config.py`** - Configuration settings like which model to use
 - **`prompt.yml`** - The text prompt you want to send to the LLM
+- **`requirements.txt`** - List of Python packages needed for this example
 
 ## Complete Setup for Beginners (macOS)
 
@@ -50,20 +52,34 @@ pip install -r requirements.txt
 4. Copy the key (it starts with `sk-`)
 5. **Important:** Save this key somewhere safe - you won't be able to see it again!
 
-### Step 6: Add your API key
-1. Open `secrets.yml` in a text editor:
+### Step 6: Create and Add your API key
+1. Copy `secrets_template.yml` to `secrets.yml`
+   ```bash
+   cp secrets_template.yml secrets.yml
+   ```
+2. Open `secrets.yml` in a text editor:
    ```bash
    # Using nano (simple terminal editor):
    nano secrets.yml
-   
+
    # OR using TextEdit (macOS default):
    open -a TextEdit secrets.yml
-   
+
    # OR using VS Code (if installed):
    code secrets.yml
    ```
-2. Replace `your-api-key-here` with your actual API key
-3. Save the file (in nano: `Control+X`, then `Y`, then `Enter`)
+3. Choose one format for your API key:
+   - **Nested format (recommended):**
+     ```yaml
+     openai:
+       api_key: your-api-key-here
+     ```
+   - **Flat format (alternative):**
+     ```yaml
+     openai_api_key: your-api-key-here
+     ```
+4. Replace `your-api-key-here` with your actual OpenAI API key
+5. Save the file (in nano: `Control+X`, then `Y`, then `Enter`)
 
 ### Step 7: Run the example
 ```bash
