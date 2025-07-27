@@ -1,0 +1,13 @@
+# Simple prompt example
+# Replace or update the text below with the prompt you want to send.
+
+prompt: "Once upon a time, in a land far away, there was a magical..."
+
+# Use plain text, avoid special characters to make editing easier.
+# Example:
+# prompt: "Explain how a black hole works using simple language suitable for a 10-year-old."
+
+# Why use this format?
+# - Developers can easily change prompts directly in this file.
+# - Non-technical users may find this simple structure friendlier.
+
