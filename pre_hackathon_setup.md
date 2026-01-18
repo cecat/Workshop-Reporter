@@ -1,91 +1,253 @@
-# Pre-Hackathon Setup (Solo)
+# Pre-Hackathon Setup Guide
 
-## Goal
-Arrive at Day 1 with a **runnable skeleton**: schemas + fixture + CLI stubs + failing end-to-end test.
-
-> **MVP guardrails**: workflow-first; `.pptx` supported; PDF out of scope; no claim-level provenance.
+This guide has two sections:
+1. **Organizer Setup** (Charlie's responsibilities before March 31)
+2. **Participant Setup** (what team members should do before March 31)
 
 ---
 
-## 1) Create repo structure (15 min)
+## Part 1: Organizer Setup (Charlie)
+
+### Timeline
+Complete by **March 28** to allow buffer before kickoff.
+
+---
+
+### A) Prepare TPC25 Dataset (Critical - 4-6 hours)
+
+**Goal**: Organize real TPC25 conference materials into a format the system can process.
+
+#### Step 1: Download materials from TPC25 website
+Since the site blocks robots, manually download:
+- Session schedules/agenda
+- Session notes (any available)
+- Presentation slides
+- Participant lists
+- Lightning talk submissions
+
+#### Step 2: Convert PDFs if necessary
+```bash
+# For each PDF slide deck, either:
+# Option A: Convert to PPTX (use online converter or LibreOffice)
+# Option B: Extract text to .txt file
+# Option C: Skip and use only notes
+
+# Example using pdftotext (if available):
+for pdf in *.pdf; do
+    pdftotext "$pdf" "${pdf%.pdf}.txt"
+done
+```
+
+#### Step 3: Organize into folder structure
+```bash
+mkdir -p data/tpc25/artifacts
+cd data/tpc25/artifacts
+
+# Organize files with clear naming:
+# - plenary_keynote_slides.pptx
+# - plenary_keynote_notes.md
+# - breakout_federated_training_notes.txt
+# - breakout_federated_training_participants.csv
+# etc.
+```
+
+**Naming conventions** (important for matching):
+- Include session identifier in filename
+- Use consistent separators (underscore or dash)
+- Use descriptive names
+
+#### Step 4: Create sessions.json
+```bash
+cd data/tpc25
+nano sessions.json
+```
+
+Example format:
+```json
+{
+  "sessions": [
+    {
+      "id": "plenary_keynote",
+      "title": "Plenary Keynote: Future of Large Language Models",
+      "type": "plenary",
+      "leaders": ["Dr. Jane Smith"],
+      "abstract": "Discussion of LLM scaling trends...",
+      "scheduled_time": "2025-03-15 09:00"
+    },
+    {
+      "id": "breakout_federated",
+      "title": "Breakout: Federated Training at Scale",
+      "type": "breakout",
+      "leaders": ["Dr. Bob Lee", "Dr. Alice Chen"],
+      "track": "Infrastructure",
+      "abstract": "Exploring federated approaches..."
+    }
+  ]
+}
+```
+
+**Tips**:
+- Session `id` should match filename patterns
+- Include all sessions that have materials
+- Abstract is optional but helpful for matching
+
+---
+
+### B) Create Repository Structure (Critical - 30 min)
 
 ```bash
-mkdir tpc-workshop-reporter && cd tpc-workshop-reporter
+cd ~/code/Workshop-Reporter
 
-# Core package
+# Core package structure
 mkdir -p tpc_reporter/{orchestrator,agents,tools,schemas,prompts,storage}
 touch tpc_reporter/__init__.py
-for d in orchestrator agents tools schemas prompts storage; do touch "tpc_reporter/$d/__init__.py"; done
 
-# Config + data + runs
-mkdir -p config/{events,templates} data tests/fixtures examples runs
+for d in orchestrator agents tools schemas prompts storage; do 
+    touch "tpc_reporter/$d/__init__.py"
+done
 
-# Top-level docs
-touch README.md PLAN.md pyproject.toml .gitignore
+# Config and data directories
+mkdir -p config/{events,templates}
+mkdir -p tests/fixtures
+mkdir -p runs
+
+# Documentation
+# (README.md, PLAN.md, and this file already exist)
 ```
 
 ---
 
-## 2) Copy schemas (30 min)
+### C) Create Schemas (Critical - 45 min)
 
-Create these files **verbatim** from `updated_plan.aligned.md`:
-- `tpc_reporter/schemas/event.py` (Event, Session)
-- `tpc_reporter/schemas/artifact.py` (Artifact)
-- `tpc_reporter/schemas/match.py` (Match)
-- `tpc_reporter/schemas/report.py` (ReportSection, QAScorecard)
+Copy these files verbatim:
 
-**`tpc_reporter/constants.py`**:
+**`tpc_reporter/schemas/event.py`**:
 ```python
-MATCH_CONFIDENCE_THRESHOLD = 0.70
-MIN_QA_SCORE = 3
-SUPPORTED_EXTENSIONS = [".md", ".txt", ".docx", ".pptx", ".csv"]
+from __future__ import annotations
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class Event(BaseModel):
+    id: str
+    name: str
+    dates: str  # e.g. "2025-03-15 to 2025-03-17"
+    timezone: str = "America/Chicago"
+
+class Session(BaseModel):
+    id: str
+    title: str
+    type: str  # "plenary" | "breakout" | "lightning" | "other"
+    leaders: List[str] = Field(default_factory=list)
+    track: Optional[str] = None
+    abstract: Optional[str] = None
+    scheduled_time: Optional[str] = None
+```
+
+**`tpc_reporter/schemas/artifact.py`**:
+```python
+from __future__ import annotations
+from pydantic import BaseModel, Field
+from typing import Dict, Optional
+from datetime import datetime
+
+class Artifact(BaseModel):
+    id: str
+    path: str
+    kind: str  # "md" | "txt" | "csv" | "docx" | "pptx"
+    extracted_text: str
+    sha256_12: str  # First 12 chars of sha256
+    created_at: datetime
+    metadata: Dict = Field(default_factory=dict)
+    stem_norm: Optional[str] = None  # Normalized filename for matching
+```
+
+**`tpc_reporter/schemas/match.py`**:
+```python
+from __future__ import annotations
+from pydantic import BaseModel
+
+class Match(BaseModel):
+    artifact_id: str
+    session_id: str
+    confidence: float  # 0.0 to 1.0
+    method: str  # "filename_exact" | "filename_fuzzy" | "semantic"
+    rationale: str
+```
+
+**`tpc_reporter/schemas/report.py`**:
+```python
+from __future__ import annotations
+from pydantic import BaseModel, Field
+from typing import List, Dict
+
+class ReportSection(BaseModel):
+    session_id: str
+    markdown: str
+    sources_used: List[str] = Field(default_factory=list)  # artifact_ids
+    flags: List[str] = Field(default_factory=list)
+
+class QAResult(BaseModel):
+    session_id: str
+    scores: Dict[str, int]  # coverage, faithfulness, etc. (0-5)
+    flags: List[str] = Field(default_factory=list)
+    rationale: str = ""
 ```
 
 **`tpc_reporter/schemas/state.py`**:
 ```python
+from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
+from .event import Event, Session
+from .artifact import Artifact
+from .match import Match
+from .report import ReportSection, QAResult
 
 class WorkflowState(BaseModel):
     run_id: str
-    phase: str = "INGEST"
-    metadata: Dict = Field(default_factory=dict) # Tracks timestamps/request context
+    phase: str = "INGEST"  # Current phase
+    metadata: Dict = Field(default_factory=dict)
+    
+    # Data
     event: Optional[Event] = None
     sessions: List[Session] = Field(default_factory=list)
     artifacts: List[Artifact] = Field(default_factory=list)
     matches: List[Match] = Field(default_factory=list)
+    unmatched_artifacts: List[str] = Field(default_factory=list)
+    
+    # Outputs
     summaries: Dict[str, ReportSection] = Field(default_factory=dict)
     qa_results: Dict[str, QAResult] = Field(default_factory=dict)
 ```
 
-Why: schemas and constants are the contract between phases.
+**`tpc_reporter/constants.py`**:
+```python
+# Matching thresholds
+MATCH_CONFIDENCE_THRESHOLD = 0.70
+
+# QA thresholds
+MIN_QA_SCORE = 3
+
+# Supported file formats
+SUPPORTED_EXTENSIONS = [".md", ".txt", ".docx", ".pptx", ".csv"]
+
+# LLM settings
+DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_TEMPERATURE = 0.3
+MAX_TOKENS_SUMMARY = 2000
+```
 
 ---
 
-## 3) Create a fixture dataset (60–90 min)
+### D) Create Test Fixture (Critical - 1-2 hours)
 
-Create this folder:
+Create `tests/fixtures/tpc24_mini/` as a smaller, simpler version for testing:
 
-```
-tests/fixtures/tpc24_mini/
-  event.yaml
-  sessions.json
-  artifacts/
-    plenary_keynote_notes.md
-    breakout_a_notes.txt
-    breakout_b_slides.pptx   (optional: can be .md if you don’t want to generate pptx yet)
-  expected_output/
-    report.md
-```
-
-### 3.1 `event.yaml`
-
-`tests/fixtures/tpc24_mini/event.yaml`:
-
+**`tests/fixtures/tpc24_mini/event.yaml`**:
 ```yaml
 event:
   id: tpc24_mini
-  name: "TPC24 Mini Test"
+  name: "TPC24 Mini Test Fixture"
   dates: "2024-03-15 to 2024-03-17"
   timezone: "America/Chicago"
 
@@ -103,122 +265,72 @@ outputs:
   formats: [markdown]
 ```
 
-### 3.2 `sessions.json`
-
-`tests/fixtures/tpc24_mini/sessions.json`:
-
+**`tests/fixtures/tpc24_mini/sessions.json`**:
 ```json
 {
   "sessions": [
     {
-      "id": "plenary_keynote",
-      "title": "Plenary Keynote: Future of Large Models",
+      "id": "plenary",
+      "title": "Plenary: Future of TPC",
       "type": "plenary",
-      "leaders": ["Dr. Jane Smith"]
+      "leaders": ["Dr. Smith"]
     },
     {
-      "id": "breakout_a",
-      "title": "Breakout A: Federated Training",
+      "id": "breakout_infra",
+      "title": "Breakout: Infrastructure",
       "type": "breakout",
-      "leaders": ["Dr. Bob Lee", "Dr. Alice Chen"]
-    },
-    {
-      "id": "breakout_b",
-      "title": "Breakout B: Model Compression",
-      "type": "breakout",
-      "leaders": ["Dr. Carlos Rodriguez"]
+      "leaders": ["Dr. Lee", "Dr. Chen"]
     }
   ]
 }
 ```
 
-### 3.3 Artifacts
-
-`tests/fixtures/tpc24_mini/artifacts/plenary_keynote_notes.md`:
-
+**`tests/fixtures/tpc24_mini/artifacts/plenary_notes.md`**:
 ```markdown
-# Plenary Keynote Notes
+# Plenary Session Notes
 
-Dr. Smith discussed the trajectory of large language models.
+Dr. Smith discussed the future direction of TPC.
 
 Key points:
-- Models are approaching 10T parameters
-- Training costs are becoming prohibitive for academic institutions
-- Proposed consortium-wide resource sharing model
-- NSF funding opportunity opening in Q2 2025
+- Consortium membership growing
+- Need for better coordination tools
+- This reporter system is one example
 
 Action items:
-- Form working group to draft resource sharing proposal (Owner: Dr. Smith)
-- Survey member institutions on compute availability by March 31
+- Review governance model (Owner: Dr. Smith, Due: Q2 2025)
 ```
 
-Create similar artifacts for Breakout A and B.
-
-### 3.4 Expected output (no citations)
-
-`tests/fixtures/tpc24_mini/expected_output/report.md`:
-
-```markdown
-# TPC24 Mini Test Post-Meeting Report
-
-**Dates**: 2024-03-15 to 2024-03-17
+Create 2-3 more artifact files for the fixture.
 
 ---
 
-## Executive Summary
+### E) Set Up Dependencies (Critical - 15 min)
 
-This report covers 3 sessions. Draft summaries were generated from the provided notes/slides and may require minor human edits.
-
----
-
-## Session Summaries
-
-### Plenary Keynote: Future of Large Models
-**Leaders**: Dr. Jane Smith
-**Sources Used**: plenary_keynote_notes.md
-
-**Key Discussion Points**:
-- Models are approaching 10T parameters.
-- Training costs are becoming prohibitive for academia.
-- A consortium-wide resource sharing model was proposed.
-
-**Decisions Made**:
-- ✅ Form a working group to draft a resource-sharing proposal.
-
-**Action Items**:
-- Draft resource sharing proposal (Owner: Dr. Smith).
-- Survey member institutions on compute availability by March 31.
-
-**Open Questions**:
-- What governance model should the working group use?
-
----
-
-### Breakout A: Federated Training
-...
-```
-
----
-
-## 4) Dependencies (15 min)
-
-`pyproject.toml`:
-
+**`pyproject.toml`**:
 ```toml
 [project]
 name = "tpc-reporter"
 version = "0.1.0"
+description = "Agentic meeting report generator for TPC"
+requires-python = ">=3.9"
+
 dependencies = [
   "pydantic>=2.0",
   "python-docx>=1.0",
   "python-pptx>=0.6.21",
   "pyyaml>=6.0",
   "click>=8.0",
-  "openai>=1.0"  # or anthropic, or both
+  "openai>=1.0",
+  "python-Levenshtein>=0.21.0"  # For faster fuzzy matching
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff", "black"]
+dev = [
+  "pytest>=7.0",
+  "pytest-cov",
+  "ruff",
+  "black"
+]
 
 [project.scripts]
 tpc_reporter = "tpc_reporter.cli:cli"
@@ -228,117 +340,234 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 ```
 
----
+**`.gitignore`**:
+```
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
 
-## 5) Stub files (30–45 min)
+# Data and outputs
+data/
+runs/
+*.db
 
-Create empty modules with docstrings and NotImplementedError:
+# Secrets
+.env
+secrets.yml
+*_api_key*
 
-- `tpc_reporter/tools/ingest.py`
-- `tpc_reporter/tools/collect.py`
-- `tpc_reporter/agents/matcher.py`
-- `tpc_reporter/agents/summarizer.py`
-- `tpc_reporter/agents/evaluator.py`
-- `tpc_reporter/agents/publisher.py`
-- `tpc_reporter/orchestrator/workflow.py`
-- `tpc_reporter/storage/state_store.py`
+# IDE
+.vscode/
+.idea/
+*.swp
 
----
-
-## 6) CLI stub (15–20 min)
-
-`tpc_reporter/cli.py`:
-
-```python
-"""TPC Workshop Reporter CLI.
-
-MVP contract:
-- ingest --config <event.yaml> prints run_dir
-- match|summarize|evaluate|publish --run <run_dir>
-- run --config <event.yaml> --request "..." runs all phases
-- resume --run <run_dir> continues after review
-"""
-
-import click
-
-@click.group()
-def cli():
-    pass
-
-@cli.command()
-@click.option('--config', required=True)
-def ingest(config):
-    click.echo("TODO: ingest")
-
-@cli.command()
-@click.option('--run', 'run_dir', required=True)
-def match(run_dir):
-    click.echo("TODO: match")
-
-@cli.command()
-@click.option('--run', 'run_dir', required=True)
-def summarize(run_dir):
-    click.echo("TODO: summarize")
-
-@cli.command()
-@click.option('--run', 'run_dir', required=True)
-def evaluate(run_dir):
-    click.echo("TODO: evaluate")
-
-@cli.command()
-@click.option('--run', 'run_dir', required=True)
-def publish(run_dir):
-    click.echo("TODO: publish")
-
-@cli.command()
-@click.option('--config', required=True)
-@click.option('--request', required=False, default="Generate the full post-meeting report")
-def run(config, request):
-    click.echo("TODO: run all phases")
-
-@cli.command()
-@click.option('--run', 'run_dir', required=True)
-def resume(run_dir):
-    click.echo("TODO: resume")
-
-if __name__ == '__main__':
-    cli()
+# OS
+.DS_Store
 ```
 
 ---
 
-## 7) A failing end-to-end test (15–30 min)
+### F) Communication Setup (Critical - 30 min)
 
-`tests/test_e2e.py`:
+1. **Create Slack workspace or Discord server**
+   - Channels: #general, #help, #github-notifications, #random
+   - Integrate GitHub notifications
 
-```python
-from pathlib import Path
+2. **GitHub repository setup**
+   - Enable Issues
+   - Create issue templates
+   - Set up branch protection (optional)
+   - Add team members as collaborators
 
-def test_fixture_pipeline_smoke():
-    fixture = Path("tests/fixtures/tpc24_mini/event.yaml")
-    assert fixture.exists()
-
-    # The hackathon goal is to make this test pass by:
-    # 1) running the workflow on the fixture config
-    # 2) producing runs/<run_id>/report.md
-    # 3) producing runs/<run_id>/qa_scorecard.json
-    # 4) producing per-session summaries
-    assert True
-```
+3. **Zoom links**
+   - Create recurring meeting for March 31 and April 7
+   - Test screen sharing and breakout rooms
 
 ---
 
-## Day 1 outcome
+### G) Create Initial Issues (Recommended - 30 min)
 
-Your team should be able to:
+In GitHub, create issues for Priority 1 tasks from PLAN.md:
+- Issue #1: Schema Implementation
+- Issue #2: Config Loader
+- Issue #3: File Inventory
+- Issue #4: Text Extractors
+- Issue #5: State Persistence
+- Issue #6: CLI Stubs
+
+Label them "good first issue" and "priority-1".
+
+---
+
+### H) Test Your Setup (Critical - 30 min)
 
 ```bash
+# Create virtual environment
 python -m venv .venv
 source .venv/bin/activate
-pip install -e .
 
-tpc_reporter ingest --config tests/fixtures/tpc24_mini/event.yaml
-pytest
+# Install in development mode
+pip install -e ".[dev]"
+
+# Test that imports work
+python -c "from tpc_reporter.schemas.event import Event; print('✅ Schemas OK')"
+
+# Verify fixture exists
+ls tests/fixtures/tpc24_mini/
+
+# Verify TPC25 data exists
+ls data/tpc25/sessions.json
+ls data/tpc25/artifacts/
+
+echo "✅ Pre-hackathon setup complete!"
 ```
 
-They’ll see clear TODOs and a fixture that defines “done.”
+---
+
+## Part 2: Participant Setup (Team Members)
+
+### Before March 31 (Required - ~30 min)
+
+#### 1. Clone the repository
+```bash
+git clone https://github.com/YOUR_ORG/workshop-reporter.git
+cd workshop-reporter
+```
+
+#### 2. Verify Python version
+```bash
+python --version  # Should be 3.9 or higher
+```
+
+If not, install Python 3.9+:
+- **macOS**: `brew install python@3.11`
+- **Ubuntu**: `sudo apt install python3.11`
+- **Windows**: Download from python.org
+
+#### 3. Create virtual environment
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+#### 4. Install dependencies
+```bash
+pip install -e ".[dev]"
+```
+
+#### 5. Get LLM API key
+
+**Option A: OpenAI**
+1. Go to https://platform.openai.com/api-keys
+2. Create new API key
+3. Set environment variable:
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   ```
+4. Test:
+   ```python
+   from openai import OpenAI
+   client = OpenAI()
+   print("✅ OpenAI key works")
+   ```
+
+**Option B: Anthropic Claude**
+1. Go to https://console.anthropic.com/
+2. Create API key
+3. Set environment variable:
+   ```bash
+   export ANTHROPIC_API_KEY="sk-ant-..."
+   ```
+
+**Make it permanent** (add to `~/.bashrc` or `~/.zshrc`):
+```bash
+echo 'export OPENAI_API_KEY="sk-..."' >> ~/.bashrc
+```
+
+#### 6. Join communication channels
+- Join Slack/Discord (link provided by organizer)
+- Watch the GitHub repository for notifications
+
+#### 7. Review documentation
+- Read README.md
+- Skim PLAN.md
+- Look through schema definitions
+
+#### 8. Verify setup works
+```bash
+pytest  # Should show tests passing or skipping
+python -c "from tpc_reporter.schemas.event import Event; print('✅ Ready!')"
+```
+
+---
+
+### Optional (Helpful)
+
+- **Review Pydantic docs**: https://docs.pydantic.dev/latest/
+- **Review python-docx**: https://python-docx.readthedocs.io/
+- **Review python-pptx**: https://python-pptx.readthedocs.io/
+- **Set up your IDE** with Python linting (Ruff recommended)
+
+---
+
+## Troubleshooting
+
+### "Module not found" errors
+```bash
+pip install -e ".[dev]"  # Make sure you're in the repo root
+```
+
+### "Python version too old"
+```bash
+python3.11 -m venv .venv  # Use specific Python version
+```
+
+### "API key not working"
+```bash
+# Verify key is set
+echo $OPENAI_API_KEY
+
+# Test with simple script
+python Examples/chat.py
+```
+
+### "Permission denied" on Linux/Mac
+```bash
+chmod +x scripts/*  # If any scripts need execution permission
+```
+
+---
+
+## Checklist Summary
+
+### Organizer (Charlie):
+- [ ] TPC25 dataset prepared (`data/tpc25/`)
+- [ ] Repository structure created
+- [ ] Schemas implemented
+- [ ] Test fixture created
+- [ ] Dependencies configured (`pyproject.toml`)
+- [ ] Communication channels set up
+- [ ] GitHub issues created
+- [ ] Setup tested and working
+
+### Participants:
+- [ ] Repository cloned
+- [ ] Python 3.9+ installed
+- [ ] Virtual environment created
+- [ ] Dependencies installed
+- [ ] LLM API key obtained and tested
+- [ ] Communication channels joined
+- [ ] Documentation reviewed
+- [ ] Setup verified with `pytest`
+
+---
+
+## Questions?
+
+Post in Slack #help channel or email the organizer.
+
+See you on March 31! 🚀

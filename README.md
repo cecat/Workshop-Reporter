@@ -4,15 +4,48 @@ A **workflow-first, multi-agent reporting assistant** for the Trillion Parameter
 
 It ingests TPC meeting materials (session rosters + notes + slide decks + docs) and produces:
 - **Per-session summaries** (consistent structure)
-- A **full meeting report** (roll-up)
-- A **QA scorecard** + **review queue** (so humans can quickly fix what the system is unsure about)
+- **A full meeting report** (roll-up)
+- **A QA scorecard** + **review queue** (so humans can quickly fix what the system is unsure about)
 
 This is designed for the TPC Executive Director to issue requests like:
-- “Pull reports together for breakouts A, B, and C.”
-- “Create a summary of plenary X.”
-- “Generate the full post-meeting report for TPC25.”
+- "Pull reports together for breakouts A, B, and C."
+- "Create a summary of plenary X."
+- "Generate the full post-meeting report for TPC25."
 
 > **Important scope note (Hackathon MVP)**: we do **not** promise claim-level provenance ("every claim is traceable to a line/slide"). Instead, each summary includes a **Sources Used** list and the QA agent flags likely unsupported content for review. Note: Selective generation (e.g. "Breakouts A/B only") is a stretch goal; the MVP defaults to full report generation for stability.
+
+---
+
+## Hackathon Timeline
+
+**March 31 (2-4 hours)**: Kickoff session via Zoom
+- Team introductions and role assignments
+- Repository walkthrough
+- Environment setup verification
+- Task assignment for first sprint
+
+**April 1-6**: Independent async work (encouraged)
+- Small, parallelizable tasks
+- Communication via Slack/Discord + GitHub issues
+
+**April 7 (6-8 hours)**: Remote sprint day
+- Open Zoom room for coordination
+- Core pipeline implementation
+- Check-ins at start, midday, end
+
+**April 8-13**: Independent async work (encouraged)
+- Bug fixes and testing
+- Documentation improvements
+- Stretch features
+
+**April 14-16 (3 days × 8 hours)**: In-person hackathon
+- Integration and end-to-end testing
+- Real TPC25 data validation
+- Polish and demo preparation
+
+**Team size**: 4-8 developers (mixed skill levels, all proficient in Python + GitHub)
+
+See [PLAN.md](./PLAN.md) for detailed task breakdown and [COORDINATION.md](./COORDINATION.md) for organizational guidance.
 
 ---
 
@@ -24,12 +57,15 @@ For reliability and reproducibility, the system is implemented as a **stateful w
 - persisted run state
 - explicit review gates
 
-A “multi-agent chat” style is optional and can be added later for drafting or rewriting, but the **runtime** is a workflow.
+A "multi-agent chat" style is optional and can be added later for drafting or rewriting, but the **runtime** is a workflow.
 
 ### Why PPTX (not PDF) for slide decks
 For the MVP we **support `.pptx`** and **do not support PDF**.
 
 Reason: PPTX is a structured, editable format (Office Open XML) with straightforward text extraction, while PDFs are layout-oriented and typically require more complex heuristics to extract usable text. If your source materials are PDFs, convert to PPTX (or provide notes) for best results.
+
+### No web scraping in MVP
+The TPC25 website blocks robots, so the MVP expects **pre-downloaded materials** organized into a local folder structure. The organizer will prepare this dataset before the hackathon.
 
 ---
 
@@ -59,7 +95,7 @@ Per run directory `runs/<run_id>/`:
 
 ### Roles
 - **Director (Orchestrator)**
-  - Parses the user request (e.g., “breakouts A/B/C”)
+  - Parses the user request (e.g., "breakouts A/B/C")
   - Selects the workflow
   - Manages phase execution, retries, budgets, and review gates
 
@@ -77,7 +113,7 @@ Per run directory `runs/<run_id>/`:
 
 - **Summarizer (Scientific Writer)**
   - Produces structured summaries in a consistent template
-  - Adds “Sources Used” (file list)
+  - Adds "Sources Used" (file list)
   - Avoids introducing information not present in sources
 
 - **Evaluator (Scientific Critic / QA)**
@@ -104,7 +140,7 @@ workshop-reporter/
 ├── config/
 │   ├── events/            # event YAML configs
 │   └── templates/         # report templates
-├── data/                  # local input files
+├── data/                  # local input files (TPC25 materials)
 ├── runs/                  # outputs
 ├── tests/
 │   └── fixtures/
@@ -185,11 +221,11 @@ tpc_reporter resume --run runs/<run_id>/
 The system generates review artifacts when confidence is low.
 
 ### After matching
-If any match is below the threshold, you’ll get:
+If any match is below the threshold, you'll get:
 - `review_queue/matches.json` (edit to approve/override)
 
 ### After QA
-If QA flags issues, you’ll get:
+If QA flags issues, you'll get:
 - `review_queue/<session_id>_draft.md` (edit the draft)
 
 Then run:
@@ -201,11 +237,22 @@ tpc_reporter resume --run runs/<run_id>/
 
 ## Hackathon MVP: Definition of Done
 
-The hackathon deliverable is a **repeatable pipeline** that can run on a small fixture:
-- produces `report.md` + per-session markdown
-- produces `qa_scorecard.json`
-- exports a review queue when uncertain
-- passes an end-to-end test (`pytest`) on the fixture
+The hackathon deliverable is a **repeatable pipeline** that works on **real TPC25 data**:
+- ✅ Ingests session roster and artifacts from local folder
+- ✅ Matches artifacts to sessions with confidence scores
+- ✅ Generates per-session summaries with "Sources Used" lists
+- ✅ Produces full meeting report (`report.md`)
+- ✅ Runs QA scoring and flags low-confidence summaries
+- ✅ Exports review queue for human editing
+- ✅ Passes end-to-end test on TPC25 fixture
+- ✅ Documentation for running and extending
+
+**What's explicitly out of scope for MVP:**
+- ❌ PDF support (convert to PPTX or notes)
+- ❌ Web scraping (materials pre-downloaded)
+- ❌ Claim-level provenance (only file-level "Sources Used")
+- ❌ Selective session generation (MVP does full report)
+- ❌ Multi-agent chat interface
 
 ---
 
@@ -217,4 +264,4 @@ The hackathon deliverable is a **repeatable pipeline** that can run on a small f
 - Embedding-based matching and cross-event retrieval
 - Review UI (Streamlit)
 - Stronger grounding (optional citations and evidence excerpts)
-
+- Selective session report generation
