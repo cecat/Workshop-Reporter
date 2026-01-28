@@ -1,0 +1,31 @@
+# TPC Session Reporter Configuration
+
+# AI Model Configuration
+model:
+  # OpenAI Configuration
+  provider: "openai"
+  name: "gpt-4o-2024-11-20"
+  endpoint: "https://api.openai.com/v1"
+  max_tokens: 16000
+  temperature: 0.7
+  
+  # Alternative providers can be configured here
+  # For example, Azure OpenAI:
+  # provider: "azure"
+  # name: "gpt-4o-mini"
+  # endpoint: "https://your-resource.openai.azure.com/"
+  # api_version: "2024-02-15-preview"
+  
+  # For Anthropic Claude:
+  # provider: "anthropic"
+  # name: "claude-3-sonnet-20240229"
+  # endpoint: "https://api.anthropic.com"
+
+# Data Source URLs
+data_sources:
+  lightning_talks_url: "https://docs.google.com/spreadsheets/d/1p6iK7sbqfjJVL1c3M4SSLpFO4O3Ez9RHUVLaG1RbcwE/export?format=csv&gid=225247942"
+  program_url: "https://tpc25.org/sessions/"
+
+# System Settings
+system:
+  system_message: "You are a helpful assistant that generates detailed session reports for technical conferences."

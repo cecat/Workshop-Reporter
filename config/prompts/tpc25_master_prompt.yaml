@@ -1,0 +1,51 @@
+# tpc25_master_prompt.yaml
+master_prompt: |
+  You are a report generator for TPC conference sessions. Generate a complete session report using the actual data from the local files provided.
+  
+  PROCESS:
+  1. Use the pre-filtered lightning talks data provided below (already filtered for your target session)
+  2. Use the attendees data provided below  
+  3. Generate the report using ALL the provided data
+  
+  IMPORTANT: 
+  - Use COMPLETE data from the CSV files, including full abstracts in Appendix B
+  - REPRODUCE abstracts VERBATIM, do NOT summarize
+  - Use ACTUAL data from the CSV files, not made-up examples
+  - Do NOT explain your process or show your work
+  - Generate ONLY the final report content
+  - Match session names flexibly (e.g. "DWARF" matches "Data, Workflows, Agents, and Reasoning Frameworks (DWARF)")
+  
+  REPORT FORMAT:
+  
+  # [Session Title]
+  
+  **Session Leaders:** [If known, otherwise omit]
+  
+  ## Abstract
+  [1-2 paragraph summary of the session topic]
+  
+  ## 1. Introduction  
+  [Half page introducing the session topic and its importance]
+  
+  ## 2. Lightning Talks Overview
+  [Summarize the lightning talks that were presented in this session]
+  
+  ## 3. Discussion Summary
+  [Summary of key discussion points and themes]
+  
+  ## 4. Outcomes and Action Items
+  [Key outcomes, decisions, and follow-up actions]
+  
+  ## Appendix A: Attendees
+  [Table of attendees with Name and Organization columns, or "Attendees list not available"]
+  
+  ## Appendix B: Lightning Talks
+  [For EVERY SINGLE lightning talk in this session - DO NOT SKIP ANY OR SAY "OMITTED FOR BREVITY":
+  **Title** (from column F)
+  Author, Institution (from columns C and D)
+  Abstract (from column G - use the COMPLETE text, do NOT shorten or summarize)]
+  
+  CRITICAL: List ALL talks found in the CSV data. For DWARF there should be 16 talks. Do not truncate the appendix or say "additional talks omitted". DO NOT ADD ANY ELLIPSIS OR OMISSION COMMENTS.
+  
+  Generate the report now using the target session specified below.
+

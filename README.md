@@ -1,6 +1,6 @@
 # TPC Workshop Reporter (Agentic Meeting Summaries)
 
-A **workflow-first, multi-agent reporting assistant** for the Trillion Parameter Consortium (TPC).
+A **workflow-based reporting system** for the Trillion Parameter Consortium (TPC), using LangGraph for orchestration.
 
 It ingests TPC meeting materials (session rosters + notes + slide decks + docs) and produces:
 - **Per-session summaries** (consistent structure)
@@ -13,6 +13,16 @@ This is designed for the TPC Executive Director to issue requests like:
 - "Generate the full post-meeting report for TPC25."
 
 > **Important scope note (Hackathon MVP)**: we do **not** promise claim-level provenance ("every claim is traceable to a line/slide"). Instead, each summary includes a **Sources Used** list and the QA agent flags likely unsupported content for review. Note: Selective generation (e.g. "Breakouts A/B only") is a stretch goal; the MVP defaults to full report generation for stability.
+
+## Built on Prior Work
+
+This implementation incorporates tested components from an earlier TPC-Session-Reporter prototype:
+- **Tested LLM prompt** for session summaries (`config/prompts/tpc25_master_prompt.yaml`)
+- **Session matching logic** (flexible acronym and keyword matching)
+- **Data pipeline** (Google Sheets/Docs integration, HTML parsing)
+- **Hybrid approach** (Python for structured data, LLM for narrative)
+
+See `reference/tpc-session-reporter/` for details on what was preserved and why.
 
 ---
 
@@ -51,13 +61,21 @@ See [PLAN.md](./PLAN.md) for detailed task breakdown and [COORDINATION.md](./COO
 
 ## Strategy
 
-### Workflow-first orchestration (recommended)
-For reliability and reproducibility, the system is implemented as a **stateful workflow**:
-- deterministic phase boundaries
-- persisted run state
-- explicit review gates
+### LangGraph Workflow Orchestration
+The system is implemented as a **stateful workflow graph** using LangGraph:
+- **State machine**: Deterministic phase boundaries (INGEST → MATCH → SUMMARIZE → EVALUATE → PUBLISH)
+- **Nodes**: Specialized functions for each processing step
+- **Edges**: Conditional routing with review gates
+- **Persistence**: Checkpointing for resume capability
+- **Human-in-the-loop**: Review gates for low-confidence decisions
 
-A "multi-agent chat" style is optional and can be added later for drafting or rewriting, but the **runtime** is a workflow.
+LangGraph provides:
+- Proven workflow orchestration for LLM applications
+- Built-in state persistence and checkpointing
+- Conditional edges for branching logic (review gates)
+- Streaming and async support
+- Simple Python API (no complex distributed systems)
+- Wide adoption and good documentation
 
 ### Why PPTX (not PDF) for slide decks
 For the MVP we **support `.pptx`** and **do not support PDF**.
@@ -93,36 +111,59 @@ Per run directory `runs/<run_id>/`:
 
 ## Architecture Overview
 
-### Roles
-- **Director (Orchestrator)**
-  - Parses the user request (e.g., "breakouts A/B/C")
-  - Selects the workflow
-  - Manages phase execution, retries, budgets, and review gates
+### LangGraph Workflow Nodes
+Each node is a Python function that processes state and returns updated state.
 
-- **Ingestion**
-  - Parses session roster from JSON/CSV
+**Workflow State:**
+```python
+class WorkflowState(TypedDict):
+    run_id: str
+    event: Event
+    sessions: List[Session]
+    artifacts: List[Artifact]
+    matches: List[Match]
+    summaries: Dict[str, ReportSection]
+    qa_results: Dict[str, QAResult]
+    phase: str  # Current phase
+    needs_review: bool
+```
+
+**Workflow Nodes:**
+
+- **ingest_node**
+  - Parses session roster from JSON/CSV/HTML
   - Produces canonical `Event` + `Session` objects
-
-- **Artifact Collector**
   - Inventories files from configured folders
   - Extracts text from supported formats
+  - Uses tested extraction logic from TPC-Session-Reporter
 
-- **Matcher**
+- **match_node**
   - Links artifacts to sessions (filename heuristics + fuzzy matching)
   - Produces `Match` objects with confidence
+  - Uses tested `session_matches()` logic from TPC-Session-Reporter
+  - **Conditional edge**: Routes to `review_gate` if confidence < threshold
 
-- **Summarizer (Scientific Writer)**
-  - Produces structured summaries in a consistent template
+- **summarize_node**
+  - Produces structured summaries using tested prompt
+  - Uses `config/prompts/tpc25_master_prompt.yaml`
   - Adds "Sources Used" (file list)
+  - Hybrid approach: Python generates appendices, LLM generates discussion/outcomes
   - Avoids introducing information not present in sources
 
-- **Evaluator (Scientific Critic / QA)**
+- **evaluate_node**
   - Scores summaries (coverage, faithfulness, specificity, actionability)
-  - Runs deterministic checks (missing sections, session coverage, suspicious claims)
-  - Triggers review gates when needed
+  - Runs deterministic checks (missing sections, session coverage)
+  - **Conditional edge**: Routes to `review_gate` if QA flags issues
 
-- **Publisher**
+- **publish_node**
   - Assembles the full meeting report
+  - Generates per-session Markdown files
+  - Exports review queue when needed
+
+- **review_gate** (conditional)
+  - Exports files to `review_queue/` for human editing
+  - Workflow pauses until `resume` command
+  - Human edits are loaded and workflow continues
 
 ---
 
@@ -131,19 +172,40 @@ Per run directory `runs/<run_id>/`:
 ```
 workshop-reporter/
 ├── tpc_reporter/
-│   ├── orchestrator/      # Director + workflow runner
-│   ├── agents/            # ingest, collect, match, summarize, evaluate, publish
-│   ├── tools/             # file parsers, text extractors
-│   ├── schemas/           # Pydantic models
-│   ├── prompts/           # summarizer + evaluator templates
-│   └── storage/           # run state load/save
+│   ├── workflow.py          # LangGraph workflow definition
+│   ├── nodes/               # Workflow node functions
+│   │   ├── ingest.py        # Ingestion + extraction
+│   │   ├── match.py         # Session matching (uses TPC-Session-Reporter logic)
+│   │   ├── summarize.py     # LLM summary generation (uses tested prompt)
+│   │   ├── evaluate.py      # QA checks
+│   │   └── publish.py       # Report assembly (uses tested appendix logic)
+│   ├── schemas/
+│   │   ├── event.py         # Event, Session models
+│   │   ├── artifact.py      # Artifact model
+│   │   ├── match.py         # Match model with evidence
+│   │   ├── report.py        # ReportSection, QAResult
+│   │   └── state.py         # WorkflowState (LangGraph)
+│   ├── tools/
+│   │   ├── extractors.py    # Text extraction (.md, .txt, .csv, .docx, .pptx)
+│   │   ├── matching.py      # Tested session_matches() from TPC-Session-Reporter
+│   │   └── web_fetch.py     # URL download with Google Sheets/Docs support
+│   ├── prompts/
+│   │   └── summarizer.yaml  # Tested prompt from TPC-Session-Reporter
+│   └── cli.py               # Command-line interface
 ├── config/
-│   ├── events/            # event YAML configs
-│   └── templates/         # report templates
-├── data/                  # local input files (TPC25 materials)
-├── runs/                  # outputs
+│   ├── events/
+│   │   └── tpc25.yaml       # Event configuration
+│   └── templates/           # Report templates
+├── reference/
+│   └── tpc-session-reporter/  # Preserved prototype code
+├── data/                    # Local input files (TPC25 materials)
+├── runs/                    # Job outputs with checkpoints
 ├── tests/
-│   └── fixtures/
+│   ├── fixtures/
+│   │   └── tpc24_mini/      # Test data
+│   ├── test_workflow.py
+│   ├── test_nodes.py
+│   └── test_tools.py
 └── README.md
 ```
 
@@ -154,19 +216,36 @@ workshop-reporter/
 ### 1) Install
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip
+# Create conda environment (recommended)
+conda create -n workshop-reporter python=3.11
+conda activate workshop-reporter
+
+# Install dependencies
 pip install -e .
 ```
 
-Set your LLM provider key:
+This installs:
+- `langgraph` - Workflow orchestration
+- `langchain` - LLM integration
+- `pydantic` - Data validation
+- `python-docx`, `python-pptx` - Document parsing
+- Other dependencies from `pyproject.toml`
+
+### 2) Set your LLM provider key
+
 ```bash
 export OPENAI_API_KEY=...
 # or ANTHROPIC_API_KEY=...
 ```
 
-### 2) Configure an event
+### 3) Verify installation
+
+```bash
+python -c "from langgraph.graph import StateGraph; print('✅ LangGraph installed')"
+python -c "from tpc_reporter.workflow import create_workflow; print('✅ TPC Reporter ready')"
+```
+
+### 4) Configure an event
 
 Create `config/events/tpc25.yaml`:
 
@@ -191,15 +270,30 @@ outputs:
   formats: [markdown]
 ```
 
-### 3) Run
+### 5) Run
 
 **One-shot run** (recommended):
 ```bash
-tpc_reporter run --config config/events/tpc25.yaml \
-  --request "Generate the post-meeting report for TPC25"
+tpc_reporter run --config config/events/tpc25.yaml
 ```
 
-**Step-by-step** (useful for debugging):
+The workflow will:
+1. **Ingest**: Parse session roster and extract text from artifacts
+2. **Match**: Link artifacts to sessions using tested matching logic
+3. **Summarize**: Generate session summaries using tested prompt
+4. **Evaluate**: Run QA checks on summaries
+5. **Publish**: Assemble full meeting report
+
+**Resume after human review**:
+
+If the workflow pauses for review (low-confidence matches or QA flags):
+```bash
+# Edit files in runs/<run_id>/review_queue/
+# Then resume:
+tpc_reporter resume --run runs/<run_id>/
+```
+
+**Step-by-step execution** (useful for debugging):
 ```bash
 RUN_DIR=$(tpc_reporter ingest --config config/events/tpc25.yaml)
 
@@ -209,9 +303,9 @@ tpc_reporter evaluate --run "$RUN_DIR"
 tpc_reporter publish --run "$RUN_DIR"
 ```
 
-**Resume after review**:
+**Inspect workflow state**:
 ```bash
-tpc_reporter resume --run runs/<run_id>/
+tpc_reporter status --run runs/<run_id>/
 ```
 
 ---
@@ -252,16 +346,29 @@ The hackathon deliverable is a **repeatable pipeline** that works on **real TPC2
 - ❌ Web scraping (materials pre-downloaded)
 - ❌ Claim-level provenance (only file-level "Sources Used")
 - ❌ Selective session generation (MVP does full report)
-- ❌ Multi-agent chat interface
+- ❌ Embedding-based semantic matching (MVP uses rule-based matching from TPC-Session-Reporter)
+- ❌ Real-time collaboration features
 
 ---
 
 ## Post-Hackathon Enhancements
 
+### Phase 2: Production Features
 - PDF support (best-effort text layer only)
-- HTML agenda scraping
-- Google Drive/Sheets connectors
-- Embedding-based matching and cross-event retrieval
-- Review UI (Streamlit)
+- Embedding-based semantic matching (vector similarity for better confidence)
+- Streamlit review UI (replace file-based review queue)
 - Stronger grounding (optional citations and evidence excerpts)
 - Selective session report generation
+- Google Drive integration (real-time monitoring)
+
+### Phase 3: Advanced Features
+- Multi-workshop corpus with cross-event retrieval
+- Continuous learning from review corrections
+- Automated slide-to-talk matching using computer vision
+- Speaker identification and tracking across events
+
+### Phase 4: Integration
+- HTML agenda scraping from common conference platforms
+- Google Sheets/Docs connectors for collaborative editing
+- Webhook notifications for workflow completion
+- API for programmatic access
