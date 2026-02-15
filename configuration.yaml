@@ -1,0 +1,62 @@
+# Workshop-Reporter Configuration
+# This file configures model endpoints and application settings
+
+# Active LLM endpoint (choose one: openai or nim_spark)
+active_endpoint: "nim_spark"
+
+# LLM Endpoint Configurations
+endpoints:
+  # OpenAI API endpoint
+  openai:
+    type: "openai"
+    base_url: "https://api.openai.com/v1"
+    model: "gpt-4o-mini"
+    # API key loaded from secrets.yaml
+    api_key_env: "OPENAI_API_KEY"
+    parameters:
+      temperature: 0.3
+      max_tokens: 4000
+      top_p: 1.0
+  
+  # NVIDIA NIM on spark-ts (via SSH)
+  nim_spark:
+    type: "nim_ssh"
+    ssh_host: "spark-ts"
+    base_url: "http://localhost:8000/v1"
+    model: "meta/llama-3.1-8b-instruct"
+    # No authentication required for local NIM
+    api_key_env: null
+    parameters:
+      temperature: 0.3
+      max_tokens: 4000
+      top_p: 1.0
+  
+  # NVIDIA NIM on spark-ts (via SSH tunnel)
+  # Uncomment to use tunnel approach instead of SSH wrapper
+  # nim_spark_tunnel:
+  #   type: "openai"
+  #   base_url: "http://localhost:8000/v1"
+  #   model: "meta/llama-3.1-8b-instruct"
+  #   api_key_env: null
+  #   parameters:
+  #     temperature: 0.3
+  #     max_tokens: 4000
+  #     top_p: 1.0
+  #   # Note: Requires manual SSH tunnel setup:
+  #   # ssh -f -N -L 8000:localhost:8000 spark-ts
+
+# Application Settings
+app:
+  # Working directory for data and outputs
+  data_dir: "./data"
+  output_dir: "./output"
+  
+  # Logging configuration
+  log_level: "INFO"
+  log_file: "./logs/workshop_reporter.log"
+  
+  # Report generation settings
+  report:
+    format: "markdown"  # markdown, html, pdf
+    include_appendices: true
+    include_metadata: true

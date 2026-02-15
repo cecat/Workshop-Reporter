@@ -8,7 +8,7 @@ OPENAI_CONFIG = {
     "base_url": "https://api.openai.com/v1",  # Standard OpenAI endpoint
     "temperature": 0.7,  # Controls randomness (0.0 = deterministic, 1.0 = very random)
     "max_tokens": 1000,  # Maximum tokens in response
-    "timeout": 30  # Request timeout in seconds
+    "timeout": 30,  # Request timeout in seconds
 }
 
 # Alternative models you might want to try:

@@ -231,11 +231,43 @@ This installs:
 - `python-docx`, `python-pptx` - Document parsing
 - Other dependencies from `pyproject.toml`
 
-### 2) Set your LLM provider key
+### 2) Configure LLM endpoint
 
+Workshop-Reporter uses a YAML-based configuration system for LLM endpoints.
+
+**Quick setup:**
+```bash
+# Copy secrets template
+cp secrets.yaml.template secrets.yaml
+
+# Edit secrets.yaml and add your OpenAI API key (if using OpenAI)
+# OR leave it empty if using NIM on spark-ts (no API key needed)
+```
+
+**Configure your endpoint in `configuration.yaml`:**
+```yaml
+# Choose one: "openai" or "nim_spark"
+active_endpoint: "nim_spark"
+```
+
+**Available endpoints:**
+- **OpenAI** (`active_endpoint: "openai"`)
+  - Uses OpenAI API (gpt-4o-mini by default)
+  - Requires `OPENAI_API_KEY` in secrets.yaml
+  - Cost: ~$0.15-0.60 per 1M tokens
+
+- **NIM on spark-ts** (`active_endpoint: "nim_spark"`)
+  - Uses NVIDIA NIM (Llama 3.1 8B) via SSH
+  - No API key required
+  - Free (uses your hardware)
+  - Requires SSH access to spark-ts
+
+See [CONFIG_README.md](./CONFIG_README.md) for detailed configuration options and how to add new endpoints.
+
+**Alternative: Environment variables (legacy)**
 ```bash
 export OPENAI_API_KEY=...
-# or ANTHROPIC_API_KEY=...
+# This still works but configuration.yaml is recommended
 ```
 
 ### 3) Verify installation
