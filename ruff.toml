@@ -1,0 +1,40 @@
+# Ruff configuration for Workshop-Reporter
+# https://docs.astral.sh/ruff/configuration/
+
+# Exclude common directories
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "env",
+    ".eggs",
+    "*.egg",
+    "build",
+    "dist",
+    "archive",
+    "originals",
+]
+
+# Target Python 3.11+
+target-version = "py311"
+
+# Line length to match black
+line-length = 88
+
+[lint]
+# Enable pycodestyle (E, W), pyflakes (F), and isort (I)
+select = ["E", "F", "W", "I"]
+
+# Ignore some common issues during development
+ignore = [
+    "E501",  # Line too long (black handles this)
+    "F401",  # Unused import (may be intentional in __init__.py)
+]
+
+[lint.per-file-ignores]
+# Allow unused imports in __init__.py files
+"__init__.py" = ["F401"]
+# Allow more flexibility in test files
+"test_*.py" = ["E501"]
+"*_test.py" = ["E501"]
