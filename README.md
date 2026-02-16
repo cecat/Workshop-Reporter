@@ -80,9 +80,9 @@ download_sheet("https://docs.google.com/spreadsheets/d/YOUR_ID/edit", "attendees
 download_doc("https://docs.google.com/document/d/YOUR_ID/edit", "notes.txt")
 ```
 
-Or use the test script as a template (modify with your URLs):
+Or use `test_with_gdrive.py` as a template — edit the URLs at the top, then run:
 ```bash
-python3 test_downloads.py  
+python3 test_with_gdrive.py
 ```
 
 ### 5. Create Track Bundle
