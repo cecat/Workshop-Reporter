@@ -2,6 +2,8 @@
 
 Generate draft track reports for TPC conferences from website data, scribe notes, and attendee lists.
 
+**Important**: This repository includes test data with specific CSV column formats. If you're using your own Google Sheets or CSV files with different column names, you'll need to update the `csv_schema` section in `configuration.yaml` to match your column names or indices. See the [CSV Schema Configuration](#csv-schema-configuration) section below.
+
 ## What It Does
 
 Given a TPC conference website and Google Drive folders with session notes and attendee lists, this tool produces **one draft Markdown report per track**, ready for human review by track organizers.
@@ -60,18 +62,44 @@ Create `secrets.yaml` with your API key:
 OPENAI_API_KEY: "sk-your-key-here"
 ```
 
-### 3. Get Your Google Drive URLs
+### 3. Configure Google Drive URLs
 
 You'll need three publicly shared Google Drive URLs:
 1. **Lightning talks sheet**: Google Sheet with columns for Title, Authors, Institution, Abstract, Track
-2. **Attendees sheet**: Google Sheet with First, Last, Organization columns  
+2. **Attendees sheet**: Google Sheet with Name and Institution columns (or customize the schema)
 3. **Notes document**: Google Doc with session notes and discussion outcomes
+
+Add these URLs to `configuration.yaml`:
+
+```yaml
+data_sources:
+  google_drive:
+    lightning_talks_url: "https://docs.google.com/spreadsheets/d/YOUR_ID/edit?usp=sharing"
+    attendees_url: "https://docs.google.com/spreadsheets/d/YOUR_ID/edit?usp=sharing"
+    notes_url: "https://docs.google.com/document/d/YOUR_ID/edit?usp=sharing"
+```
+
+**Important**: If your CSV files have different column names, update the `csv_schema` section in `configuration.yaml`. See [CSV Schema Configuration](#csv-schema-configuration).
 
 Note: a CSV file uploaded to Google Drive needs to be opened and saved as a Google Sheets file.
 
-### 4. Download Google Drive Data
+### 4. Fetch Data and Create Bundle
 
-The `gdrive.py` module can download directly from Google Drive URLs:
+Use the `fetch-and-assemble` command to download data from Google Drive and create a track bundle in one step:
+
+```bash
+tpc-reporter fetch-and-assemble --track Track-1 -o data/track1_bundle.json
+```
+
+This will:
+- Download lightning talks, attendees, and notes from the URLs in `configuration.yaml`
+- Parse the data using the CSV schema mappings
+- Filter talks by the specified track
+- Create a bundle JSON file
+
+**Alternative: Manual download**
+
+You can also download files manually using Python:
 
 ```python
 from tpc_reporter.gdrive import download_sheet, download_doc
@@ -82,14 +110,20 @@ download_sheet("https://docs.google.com/spreadsheets/d/YOUR_ID/edit", "attendees
 download_doc("https://docs.google.com/document/d/YOUR_ID/edit", "notes.txt")
 ```
 
-Or use `test_with_gdrive.py` as a template — edit the URLs at the top, then run:
+Generate report from the bundle:
+
 ```bash
-python3 test_with_gdrive.py
+tpc-reporter run data/track1_bundle.json -o output/track1_report.md
 ```
 
-### 5. Create Track Bundle
+This runs:
+1. **Generation**: Creates draft report using LLM
+2. **Verification**: Checks for hallucinations against source data
+3. **Output**: Saves final report with any flags marked
 
-Assemble the downloaded data into a track bundle JSON file. You'll need to write a Python script to parse your specific CSV/text files and create the bundle format.
+## Advanced: Manual Bundle Creation
+
+If you need more control over the bundle creation process, you can create the bundle JSON manually.
 
 **Bundle format:**
 ```json
@@ -117,20 +151,7 @@ Assemble the downloaded data into a track bundle JSON file. You'll need to write
 **Helper script template:**
 See the repository's test scripts for examples of parsing Google Drive data into bundles.
 
-### 6. Generate Report
-
-Generate report from bundle:
-
-```bash
-python3 -m tpc_reporter.cli run data/bundles/track_bundle.json -o output/track_report.md
-```
-
-This runs:
-1. **Generation**: Creates draft report using LLM
-2. **Verification**: Checks for hallucinations against source data
-3. **Output**: Saves final report with any flags marked
-
-## Creating Bundle JSON from Your Data
+## Manual Bundle Creation Scripts
 
 You'll need to write a Python script to parse your downloaded CSV/text files and create a bundle JSON. Here's a template:
 
@@ -315,6 +336,47 @@ Each report contains `[FLAG: ...]` annotations where the hallucination checker f
 ### configuration.yaml
 
 Edit `configuration.yaml` in the project root to set your LLM endpoint. Here we are using OpenAI as an example.  The OPENAI_API_KEY will need to be in your secrets.yaml file.  If you are using a local model the example here is for a NVIDIA/Dell Spark using NIM to serve a llama series model.
+
+### CSV Schema Configuration
+
+The tool uses configurable CSV column mappings to parse your data. The repository includes test data with specific column formats. **If your CSV files use different column names or structures, you must update the `csv_schema` section in `configuration.yaml`**.
+
+```yaml
+data_sources:
+  csv_schema:
+    lightning_talks:
+      title: "Title of your proposed lightning talk"  # Column name (string)
+      author: "Your full name"  # Column name (string)
+      abstract: "Abstract of your proposed lightning talk (80-100 words)"  # Column name
+      track: "Track"  # Column name
+    attendees:
+      name: 0  # Column index (integer, 0-based)
+      institution: 1  # Column index (integer)
+```
+
+**Key points:**
+- **Lightning talks**: Use exact column name strings from your Google Form or CSV headers
+- **Attendees**: Can use column indices (integers) for simple 2-column spreadsheets, or column names (strings) for named headers
+- **Column indices are 0-based**: First column is 0, second is 1, etc.
+
+If you're using the included test URLs, these mappings are already configured correctly. If you're using your own data:
+
+1. Download your CSV file or view it in Google Sheets
+2. Check the exact column header names
+3. Update the `csv_schema` section in `configuration.yaml` to match your headers
+
+**Example for different column names:**
+```yaml
+csv_schema:
+  lightning_talks:
+    title: "Talk Title"  # Your CSV uses "Talk Title" instead
+    author: "Speaker Name"  # Your CSV uses "Speaker Name"
+    abstract: "Description"  # Your CSV uses "Description"
+    track: "Session Track"  # Your CSV uses "Session Track"
+  attendees:
+    name: "Full Name"  # Using column name instead of index
+    institution: "Company"  # Your CSV uses "Company"
+```
 
 ```yaml
 active_endpoint: "openai"  
