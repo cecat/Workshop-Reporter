@@ -86,12 +86,12 @@ def example_workshop_report_style():
     # Simulate a session summary request
     session_info = """
     Session: Data Workflows and Agents (DWARF)
-    
+
     Lightning Talks:
     1. "Automated Pipeline for LLM Training" by Jane Smith
        - Developed scalable data pipeline handling 100TB+ datasets
        - Reduced preprocessing time by 60%
-    
+
     2. "Multi-Agent Coordination Framework" by John Doe
        - Novel approach to coordinating autonomous agents
        - Applied to climate modeling workflows
