@@ -177,6 +177,15 @@ class Config:
             "notes_url": gdrive.get("notes_url"),
         }
 
+    def get_csv_schema(self) -> dict[str, Any]:
+        """
+        Get CSV column schema mappings.
+
+        Returns:
+            Dictionary with lightning_talks and attendees schema mappings
+        """
+        return self.config.get("data_sources", {}).get("csv_schema", {})
+
     def get_conference_website(self) -> dict[str, Any]:
         """
         Get conference website configuration.

@@ -12,6 +12,18 @@ data_sources:
     attendees_url: "https://docs.google.com/spreadsheets/d/110nG8lGcxwpBIpKtiXWXVf9voQUgvNDnX-wPYU8vHdI/edit?usp=sharing"
     notes_url: "https://docs.google.com/document/d/1DPUL6fk0uehAdT_G46gv2e0u1PFCC5uL5cyI4g1vXGU/edit?usp=sharing"
   
+  # CSV column mappings for parsing downloaded data
+  # Map semantic fields to actual column names (string) or indices (integer) in CSV files
+  csv_schema:
+    lightning_talks:
+      title: "Title of your proposed lightning talk"  # Column name from Google Form
+      author: "Your full name"  # Column name from Google Form
+      abstract: "Abstract of your proposed lightning talk (80-100 words)"  # Column name
+      track: "Track"  # Column name
+    attendees:
+      name: 0  # Column index (0-based)
+      institution: 1  # Column index (0-based)
+  
   # Conference website (for future use when scraping is debugged)
   conference_website:
     url: "https://tpc26.org"  # optional

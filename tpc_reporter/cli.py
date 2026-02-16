@@ -53,6 +53,7 @@ def fetch_and_assemble(track: str, output: str):
     click.echo("Loading configuration...")
     config = load_config()
     urls = config.get_google_drive_urls()
+    csv_schema = config.get_csv_schema()
 
     # Validate URLs
     if not all(urls.values()):
@@ -61,6 +62,12 @@ def fetch_and_assemble(track: str, output: str):
         click.echo("  - lightning_talks_url", err=True)
         click.echo("  - attendees_url", err=True)
         click.echo("  - notes_url", err=True)
+        sys.exit(1)
+
+    # Validate CSV schema
+    if not csv_schema.get("lightning_talks") or not csv_schema.get("attendees"):
+        click.echo("Error: Missing CSV schema in configuration.yaml", err=True)
+        click.echo("Please ensure csv_schema is configured with lightning_talks and attendees mappings", err=True)
         sys.exit(1)
 
     click.echo(f"\nFetching data from Google Drive...")
@@ -100,6 +107,10 @@ def fetch_and_assemble(track: str, output: str):
 
     click.echo("\nParsing data...")
 
+    # Get column mappings from schema
+    talks_schema = csv_schema["lightning_talks"]
+    attendees_schema = csv_schema["attendees"]
+
     # Parse lightning talks CSV
     import csv
     import io
@@ -108,27 +119,56 @@ def fetch_and_assemble(track: str, output: str):
     all_talks = list(talks_reader)
 
     # Filter for specified track
-    track_talks = [t for t in all_talks if t.get("Track") == track]
+    track_col = talks_schema["track"]
+    track_talks = [t for t in all_talks if t.get(track_col) == track]
     click.echo(f"  Found {len(track_talks)} talks for {track}")
 
-    # Parse attendees CSV
-    attendees_reader = csv.DictReader(io.StringIO(attendees_csv))
-    attendees_list = list(attendees_reader)
+    # Parse attendees CSV (support both column indices and names)
+    attendees_name_col = attendees_schema["name"]
+    if isinstance(attendees_name_col, int):
+        # Column index - read as list of lists
+        attendees_reader = csv.reader(io.StringIO(attendees_csv))
+        attendees_list = list(attendees_reader)
+        # Skip header row if present
+        if attendees_list and not attendees_list[0][0].replace(" ", "").isdigit():
+            attendees_list = attendees_list[1:]
+    else:
+        # Column name - read as dict
+        attendees_reader = csv.DictReader(io.StringIO(attendees_csv))
+        attendees_list = list(attendees_reader)
 
     # Extract unique authors from talks
     authors = set()
+    author_col = talks_schema["author"]
     for talk in track_talks:
-        author = talk.get("Your full name", "").strip()
+        author = talk.get(author_col, "").strip()
         if author:
             authors.add(author)
 
     # Merge authors with attendees list
-    attendees_names = {a.get("Name", "").strip() for a in attendees_list if a.get("Name")}
+    attendees_names = set()
+    if isinstance(attendees_name_col, int):
+        # Extract by column index
+        for row in attendees_list:
+            if len(row) > attendees_name_col:
+                name = row[attendees_name_col].strip()
+                if name:
+                    attendees_names.add(name)
+    else:
+        # Extract by column name
+        for a in attendees_list:
+            name = a.get(attendees_name_col, "").strip()
+            if name:
+                attendees_names.add(name)
+
     all_attendees = sorted(authors | attendees_names)
     click.echo(f"  Found {len(all_attendees)} unique attendees")
 
     # Create bundle
     click.echo("\nAssembling bundle...")
+    title_col = talks_schema["title"]
+    abstract_col = talks_schema["abstract"]
+
     bundle = {
         "track": {
             "id": track,
@@ -137,10 +177,10 @@ def fetch_and_assemble(track: str, output: str):
         "sessions": [],
         "lightning_talks": [
             {
-                "title": talk.get("Title of your proposed lightning talk", ""),
-                "authors": [talk.get("Your full name", "")],
-                "abstract": talk.get("Abstract of your proposed lightning talk (80-100 words)", ""),
-                "track": talk.get("Track", ""),
+                "title": talk.get(title_col, ""),
+                "authors": [talk.get(author_col, "")],
+                "abstract": talk.get(abstract_col, ""),
+                "track": talk.get(track_col, ""),
             }
             for talk in track_talks
         ],
