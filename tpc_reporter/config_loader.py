@@ -8,8 +8,6 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import yaml
-
 
 class ConfigurationError(Exception):
     """Raised when there's an issue with configuration."""
@@ -17,30 +15,55 @@ class ConfigurationError(Exception):
     pass
 
 
+def _find_project_root() -> Path:
+    """Find the project root by looking for configuration.yaml."""
+    # Start from this file's location and search upward
+    current = Path(__file__).parent
+    for _ in range(5):  # Don't search too far up
+        if (current / "configuration.yaml").exists():
+            return current
+        current = current.parent
+
+    # Fall back to current working directory
+    cwd = Path.cwd()
+    if (cwd / "configuration.yaml").exists():
+        return cwd
+
+    raise ConfigurationError(
+        "Could not find configuration.yaml. "
+        "Ensure you're running from the project directory."
+    )
+
+
 class Config:
     """Configuration manager for Workshop-Reporter."""
 
     def __init__(
         self,
-        config_path: str = "configuration.yaml",
-        secrets_path: str = "secrets.yaml",
+        config_path: Optional[str] = None,
+        secrets_path: Optional[str] = None,
     ):
         """
         Initialize configuration.
 
         Args:
-            config_path: Path to configuration.yaml
-            secrets_path: Path to secrets.yaml
+            config_path: Path to configuration.yaml (default: project root)
+            secrets_path: Path to secrets.yaml (default: project root)
         """
+        if config_path is None:
+            project_root = _find_project_root()
+            config_path = project_root / "configuration.yaml"
+            secrets_path = secrets_path or project_root / "secrets.yaml"
+
         self.config_path = Path(config_path)
-        self.secrets_path = Path(secrets_path)
+        self.secrets_path = Path(secrets_path) if secrets_path else None
 
         # Load configuration
         self.config = self._load_yaml(self.config_path)
 
         # Load secrets (optional)
         self.secrets = {}
-        if self.secrets_path.exists():
+        if self.secrets_path and self.secrets_path.exists():
             self.secrets = self._load_yaml(self.secrets_path)
 
         # Get active endpoint configuration
@@ -54,6 +77,8 @@ class Config:
 
     def _load_yaml(self, path: Path) -> Dict[str, Any]:
         """Load YAML file."""
+        import yaml
+
         if not path.exists():
             raise ConfigurationError(f"Configuration file not found: {path}")
 
@@ -140,33 +165,17 @@ class Config:
 
 
 def load_config(
-    config_path: str = "configuration.yaml", secrets_path: str = "secrets.yaml"
+    config_path: Optional[str] = None,
+    secrets_path: Optional[str] = None,
 ) -> Config:
     """
     Load configuration and secrets.
 
     Args:
-        config_path: Path to configuration.yaml
-        secrets_path: Path to secrets.yaml
+        config_path: Path to configuration.yaml (default: auto-detect)
+        secrets_path: Path to secrets.yaml (default: auto-detect)
 
     Returns:
         Config object
     """
     return Config(config_path, secrets_path)
-
-
-# Example usage
-if __name__ == "__main__":
-    # Load configuration
-    config = load_config()
-
-    print(f"Active endpoint: {config.active_endpoint_name}")
-    print(f"Available endpoints: {config.list_endpoints()}")
-    print("\nLLM client parameters:")
-
-    params = config.get_llm_client_params()
-    for key, value in params.items():
-        if key != "api_key":  # Don't print API keys
-            print(f"  {key}: {value}")
-        else:
-            print(f"  {key}: {'*' * 10}")

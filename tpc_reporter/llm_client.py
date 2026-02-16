@@ -7,15 +7,15 @@ based on configuration.yaml settings.
 
 import json
 import subprocess
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from config_loader import Config, load_config
+from tpc_reporter.config_loader import Config, load_config
 
 
 class LLMClient:
     """Unified LLM client that works with multiple endpoints."""
 
-    def __init__(self, config: Config = None):
+    def __init__(self, config: Optional[Config] = None):
         """
         Initialize LLM client.
 
@@ -52,7 +52,11 @@ class LLMClient:
         self.base_url = self.client_params["base_url"]
         # No actual client needed - we use SSH wrapper
 
-    def chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
+    def chat_completion(
+        self,
+        messages: List[Dict[str, str]],
+        **kwargs,
+    ) -> str:
         """
         Generate chat completion.
 
@@ -71,9 +75,13 @@ class LLMClient:
             return self._openai_completion(messages, params)
         elif self.endpoint_type == "nim_ssh":
             return self._nim_ssh_completion(messages, params)
+        else:
+            raise ValueError(f"Unsupported endpoint type: {self.endpoint_type}")
 
     def _openai_completion(
-        self, messages: List[Dict[str, str]], params: Dict[str, Any]
+        self,
+        messages: List[Dict[str, str]],
+        params: Dict[str, Any],
     ) -> str:
         """OpenAI-compatible completion."""
         response = self.client.chat.completions.create(
@@ -86,7 +94,9 @@ class LLMClient:
         return response.choices[0].message.content
 
     def _nim_ssh_completion(
-        self, messages: List[Dict[str, str]], params: Dict[str, Any]
+        self,
+        messages: List[Dict[str, str]],
+        params: Dict[str, Any],
     ) -> str:
         """NIM completion via SSH wrapper."""
         # Build curl command payload
@@ -138,8 +148,11 @@ class LLMClient:
             raise RuntimeError(
                 f"Failed to parse LLM response: {e}\nOutput: {result.stdout}"
             )
-        except Exception as e:
-            raise RuntimeError(f"LLM request failed: {e}")
+
+    @property
+    def model(self) -> str:
+        """Get the model name."""
+        return self.client_params["model"]
 
     def __repr__(self):
         return (
@@ -149,8 +162,7 @@ class LLMClient:
         )
 
 
-# Convenience function
-def create_llm_client(endpoint: str = None) -> LLMClient:
+def create_llm_client(endpoint: Optional[str] = None) -> LLMClient:
     """
     Create LLM client with optional endpoint override.
 
@@ -164,20 +176,3 @@ def create_llm_client(endpoint: str = None) -> LLMClient:
     if endpoint:
         config.switch_endpoint(endpoint)
     return LLMClient(config)
-
-
-# Example usage
-if __name__ == "__main__":
-    # Create client (uses active_endpoint from configuration.yaml)
-    client = create_llm_client()
-    print(f"Using: {client}\n")
-
-    # Test completion
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Say hello in one sentence."},
-    ]
-
-    print("Testing LLM completion...")
-    response = client.chat_completion(messages, max_tokens=100)
-    print(f"Response: {response}")

@@ -6,8 +6,7 @@ This demonstrates how to use the configuration system to switch between
 different LLM endpoints (OpenAI, NIM on spark-ts, etc.)
 """
 
-from config_loader import load_config
-from llm_client import create_llm_client
+from tpc_reporter import create_llm_client, load_config
 
 
 def example_basic_usage():
