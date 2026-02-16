@@ -194,13 +194,16 @@ class TestCreateLLMClient:
     location, so these tests use the real project configuration.
     """
 
-    def test_create_with_default_endpoint(self):
+    def test_create_with_default_endpoint(self, monkeypatch):
         """Test creating client with default endpoint from project config."""
-        # This uses the real project config (nim_spark is the default)
-        client = create_llm_client()
-        # Just verify it creates successfully with the configured endpoint
-        assert client.endpoint_type in ["openai", "nim_ssh"]
-        assert client.model is not None
+        # This uses the real project config (openai is the default)
+        # Set dummy API key for openai endpoint
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key-for-testing")
+        with patch("openai.OpenAI"):
+            client = create_llm_client()
+            # Just verify it creates successfully with the configured endpoint
+            assert client.endpoint_type in ["openai", "nim_ssh"]
+            assert client.model is not None
 
     def test_create_with_endpoint_override(self, monkeypatch):
         """Test creating client with endpoint override using real config."""
