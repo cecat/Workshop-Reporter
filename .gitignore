@@ -36,3 +36,6 @@ test_real_urls.py
 output/
 data/bundles/
 
+# Archive directory (old/reference materials)
+archive/
+
