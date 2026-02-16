@@ -16,6 +16,7 @@ from tpc_reporter.assembler import (
     load_lightning_talks_csv,
 )
 from tpc_reporter.checker import check_report, check_report_from_files
+from tpc_reporter.config_loader import load_config
 from tpc_reporter.generator import generate_report, generate_report_from_file
 from tpc_reporter.llm_client import create_llm_client
 
@@ -25,6 +26,137 @@ from tpc_reporter.llm_client import create_llm_client
 def main():
     """TPC Workshop Reporter - Generate track reports from conference data."""
     pass
+
+
+@main.command("fetch-and-assemble")
+@click.option(
+    "--track",
+    default="Track-1",
+    help="Track name to filter (e.g., Track-1)",
+)
+@click.option(
+    "-o",
+    "--output",
+    default="./data/track_bundle.json",
+    help="Output path for bundle JSON file",
+)
+def fetch_and_assemble(track: str, output: str):
+    """Fetch data from Google Drive URLs in config and create a track bundle.
+
+    Reads Google Drive URLs from configuration.yaml, downloads the data,
+    and assembles it into a track bundle JSON file.
+    """
+    import tempfile
+
+    from tpc_reporter import gdrive
+
+    click.echo("Loading configuration...")
+    config = load_config()
+    urls = config.get_google_drive_urls()
+
+    # Validate URLs
+    if not all(urls.values()):
+        click.echo("Error: Missing Google Drive URLs in configuration.yaml", err=True)
+        click.echo("Please ensure all URLs are configured:", err=True)
+        click.echo("  - lightning_talks_url", err=True)
+        click.echo("  - attendees_url", err=True)
+        click.echo("  - notes_url", err=True)
+        sys.exit(1)
+
+    click.echo(f"\nFetching data from Google Drive...")
+
+    # Create temp directory for downloads
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir_path = Path(tmpdir)
+
+        # Download lightning talks
+        click.echo(f"  Downloading lightning talks...")
+        talks_path = tmpdir_path / "talks.csv"
+        if not gdrive.download_sheet(urls["lightning_talks_url"], str(talks_path)):
+            click.echo("Error: Failed to download lightning talks", err=True)
+            sys.exit(1)
+
+        # Download attendees
+        click.echo(f"  Downloading attendees...")
+        attendees_path = tmpdir_path / "attendees.csv"
+        if not gdrive.download_sheet(urls["attendees_url"], str(attendees_path)):
+            click.echo("Error: Failed to download attendees", err=True)
+            sys.exit(1)
+
+        # Download notes
+        click.echo(f"  Downloading notes...")
+        notes_path = tmpdir_path / "notes.txt"
+        if not gdrive.download_doc(urls["notes_url"], str(notes_path)):
+            click.echo("Error: Failed to download notes", err=True)
+            sys.exit(1)
+
+        # Read downloaded files
+        with open(talks_path) as f:
+            talks_csv = f.read()
+        with open(attendees_path) as f:
+            attendees_csv = f.read()
+        with open(notes_path) as f:
+            notes_text = f.read()
+
+    click.echo("\nParsing data...")
+
+    # Parse lightning talks CSV
+    import csv
+    import io
+
+    talks_reader = csv.DictReader(io.StringIO(talks_csv))
+    all_talks = list(talks_reader)
+
+    # Filter for specified track
+    track_talks = [t for t in all_talks if t.get("Track") == track]
+    click.echo(f"  Found {len(track_talks)} talks for {track}")
+
+    # Parse attendees CSV
+    attendees_reader = csv.DictReader(io.StringIO(attendees_csv))
+    attendees_list = list(attendees_reader)
+
+    # Extract unique authors from talks
+    authors = set()
+    for talk in track_talks:
+        author = talk.get("Your full name", "").strip()
+        if author:
+            authors.add(author)
+
+    # Merge authors with attendees list
+    attendees_names = {a.get("Name", "").strip() for a in attendees_list if a.get("Name")}
+    all_attendees = sorted(authors | attendees_names)
+    click.echo(f"  Found {len(all_attendees)} unique attendees")
+
+    # Create bundle
+    click.echo("\nAssembling bundle...")
+    bundle = {
+        "track": {
+            "id": track,
+            "name": track.replace("-", " ").title(),
+        },
+        "sessions": [],
+        "lightning_talks": [
+            {
+                "title": talk.get("Title of your proposed lightning talk", ""),
+                "authors": [talk.get("Your full name", "")],
+                "abstract": talk.get("Abstract of your proposed lightning talk (80-100 words)", ""),
+                "track": talk.get("Track", ""),
+            }
+            for talk in track_talks
+        ],
+        "attendees": [{"name": name} for name in all_attendees],
+        "notes": notes_text,
+    }
+
+    # Write bundle
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(bundle, f, indent=2)
+
+    click.echo(f"\n✓ Bundle written to {output_path}")
+    click.echo(f"  Lightning talks: {len(track_talks)}")
+    click.echo(f"  Attendees: {len(all_attendees)}")
 
 
 @main.command()

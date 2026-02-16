@@ -159,6 +159,37 @@ class Config:
         self.active_endpoint_name = endpoint_name
         self.active_endpoint = self._get_endpoint_config(endpoint_name)
 
+    def get_data_sources(self) -> dict[str, Any]:
+        """Get all data sources configuration."""
+        return self.config.get("data_sources", {})
+
+    def get_google_drive_urls(self) -> dict[str, str]:
+        """
+        Get Google Drive URLs from configuration.
+
+        Returns:
+            Dictionary with keys: lightning_talks_url, attendees_url, notes_url
+        """
+        gdrive = self.config.get("data_sources", {}).get("google_drive", {})
+        return {
+            "lightning_talks_url": gdrive.get("lightning_talks_url"),
+            "attendees_url": gdrive.get("attendees_url"),
+            "notes_url": gdrive.get("notes_url"),
+        }
+
+    def get_conference_website(self) -> dict[str, Any]:
+        """
+        Get conference website configuration.
+
+        Returns:
+            Dictionary with keys: url, enabled
+        """
+        website = self.config.get("data_sources", {}).get("conference_website", {})
+        return {
+            "url": website.get("url"),
+            "enabled": website.get("enabled", False),
+        }
+
     def __repr__(self):
         return (
             f"Config(active_endpoint='{self.active_endpoint_name}', "
