@@ -9,7 +9,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 
@@ -22,7 +22,7 @@ class VerificationResult:
     """Result of report verification."""
 
     report: str
-    flags: List[Dict[str, str]] = field(default_factory=list)
+    flags: list[dict[str, str]] = field(default_factory=list)
     total_flags: int = 0
     status: str = "UNKNOWN"
 
@@ -74,7 +74,7 @@ def load_checker_prompt(prompt_name: str = "checker_prompt.yaml") -> str:
     if not prompt_path.exists():
         raise FileNotFoundError(f"Checker prompt not found: {prompt_path}")
 
-    with open(prompt_path, "r") as f:
+    with open(prompt_path) as f:
         prompt_data = yaml.safe_load(f)
 
     if "checker_prompt" not in prompt_data:
@@ -83,7 +83,7 @@ def load_checker_prompt(prompt_name: str = "checker_prompt.yaml") -> str:
     return prompt_data["checker_prompt"]
 
 
-def extract_flags(checked_report: str) -> List[Dict[str, str]]:
+def extract_flags(checked_report: str) -> list[dict[str, str]]:
     """
     Extract [FLAG: ...] annotations from a checked report.
 
@@ -106,7 +106,7 @@ def extract_flags(checked_report: str) -> List[Dict[str, str]]:
     return flags
 
 
-def parse_verification_summary(checked_report: str) -> Dict[str, Any]:
+def parse_verification_summary(checked_report: str) -> dict[str, Any]:
     """
     Parse the verification summary section from a checked report.
 
@@ -154,8 +154,8 @@ def parse_verification_summary(checked_report: str) -> Dict[str, Any]:
 
 def check_report(
     draft_report: str,
-    bundle: Dict[str, Any],
-    client: Optional[LLMClient] = None,
+    bundle: dict[str, Any],
+    client: LLMClient | None = None,
     prompt_name: str = "checker_prompt.yaml",
     max_tokens: int = 10000,
     temperature: float = 0.1,
@@ -234,8 +234,8 @@ Please verify this report against the source data and flag any hallucinations.""
 def check_report_from_files(
     draft_path: str,
     bundle_path: str,
-    output_path: Optional[str] = None,
-    client: Optional[LLMClient] = None,
+    output_path: str | None = None,
+    client: LLMClient | None = None,
     **kwargs,
 ) -> VerificationResult:
     """
@@ -259,10 +259,10 @@ def check_report_from_files(
     if not bundle_path.exists():
         raise FileNotFoundError(f"Bundle file not found: {bundle_path}")
 
-    with open(draft_path, "r") as f:
+    with open(draft_path) as f:
         draft_report = f.read()
 
-    with open(bundle_path, "r") as f:
+    with open(bundle_path) as f:
         bundle = json.load(f)
 
     result = check_report(draft_report, bundle, client=client, **kwargs)

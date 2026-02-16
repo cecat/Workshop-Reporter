@@ -1,7 +1,6 @@
 """Tests for data assembler."""
 
 import json
-from pathlib import Path
 
 import pytest
 

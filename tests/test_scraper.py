@@ -2,10 +2,7 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 from tpc_reporter.scraper import (
-    ScrapeResult,
     Session,
     Speaker,
     _csv_escape,

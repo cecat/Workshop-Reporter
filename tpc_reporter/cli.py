@@ -7,7 +7,6 @@ Provides commands to assemble data, generate reports, and check for hallucinatio
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 import click
 
@@ -115,10 +114,10 @@ def assemble(lightning_talks: str, track_inputs: str, output: str, track_id: str
 )
 def generate(
     bundle: str,
-    output: Optional[str],
+    output: str | None,
     max_tokens: int,
     temperature: float,
-    endpoint: Optional[str],
+    endpoint: str | None,
 ):
     """Generate a track report from a bundle file.
 
@@ -164,9 +163,9 @@ def generate(
 def check(
     draft: str,
     bundle: str,
-    output: Optional[str],
+    output: str | None,
     max_tokens: int,
-    endpoint: Optional[str],
+    endpoint: str | None,
 ):
     """Check a draft report for hallucinations against source data.
 
@@ -230,10 +229,10 @@ def check(
 )
 def run(
     bundle: str,
-    output: Optional[str],
-    draft_output: Optional[str],
+    output: str | None,
+    draft_output: str | None,
     max_tokens: int,
-    endpoint: Optional[str],
+    endpoint: str | None,
     skip_check: bool,
 ):
     """Run the full pipeline: generate report and check for hallucinations.
@@ -243,7 +242,7 @@ def run(
     client = create_llm_client(endpoint=endpoint) if endpoint else create_llm_client()
 
     # Load bundle
-    with open(bundle, "r") as f:
+    with open(bundle) as f:
         bundle_data = json.load(f)
 
     track_name = bundle_data.get("track", {}).get("name", "Unknown")
@@ -314,7 +313,7 @@ def run(
 def generate_all(
     bundles_dir: str,
     output: str,
-    endpoint: Optional[str],
+    endpoint: str | None,
     skip_check: bool,
 ):
     """Generate reports for all track bundles in a directory.
@@ -338,7 +337,7 @@ def generate_all(
         track_id = bundle_file.stem.replace("_bundle", "")
         click.echo(f"\nProcessing {track_id}...")
 
-        with open(bundle_file, "r") as f:
+        with open(bundle_file) as f:
             bundle_data = json.load(f)
 
         # Generate

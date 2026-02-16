@@ -8,7 +8,6 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import List, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -39,7 +38,7 @@ class Session:
     session_type: str = ""  # "plenary", "breakout", "tutorial", "hackathon"
     datetime: str = ""
     description: str = ""
-    speakers: List[str] = field(default_factory=list)
+    speakers: list[str] = field(default_factory=list)
     track: str = ""
 
 
@@ -47,13 +46,13 @@ class Session:
 class ScrapeResult:
     """Result of scraping a TPC website."""
 
-    speakers: List[Speaker] = field(default_factory=list)
-    sessions: List[Session] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    speakers: list[Speaker] = field(default_factory=list)
+    sessions: list[Session] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     base_url: str = ""
 
 
-def fetch_page(url: str, timeout: int = DEFAULT_TIMEOUT) -> Optional[str]:
+def fetch_page(url: str, timeout: int = DEFAULT_TIMEOUT) -> str | None:
     """
     Fetch a webpage and return its HTML content.
 
@@ -74,7 +73,7 @@ def fetch_page(url: str, timeout: int = DEFAULT_TIMEOUT) -> Optional[str]:
         return None
 
 
-def parse_speakers_page(html: str) -> List[Speaker]:
+def parse_speakers_page(html: str) -> list[Speaker]:
     """
     Parse speakers from a TPC speakers page.
 
@@ -157,7 +156,7 @@ def _parse_speaker_description(description: str) -> tuple:
     return description, ""
 
 
-def parse_sessions_page(html: str) -> List[Session]:
+def parse_sessions_page(html: str) -> list[Session]:
     """
     Parse sessions from a TPC sessions page.
 
@@ -265,7 +264,7 @@ def _detect_session_type(title: str, section: str) -> str:
 
 def scrape_speakers(
     base_url: str, speakers_path: str = "/agenda/speakers/"
-) -> List[Speaker]:
+) -> list[Speaker]:
     """
     Scrape speakers from a TPC website.
 
@@ -286,7 +285,7 @@ def scrape_speakers(
     return parse_speakers_page(html)
 
 
-def scrape_sessions(base_url: str, sessions_path: str = "/sessions/") -> List[Session]:
+def scrape_sessions(base_url: str, sessions_path: str = "/sessions/") -> list[Session]:
     """
     Scrape sessions from a TPC website.
 
@@ -343,7 +342,7 @@ def scrape_site(base_url: str) -> ScrapeResult:
     return result
 
 
-def speakers_to_csv(speakers: List[Speaker]) -> str:
+def speakers_to_csv(speakers: list[Speaker]) -> str:
     """
     Convert speakers to CSV format.
 
@@ -364,7 +363,7 @@ def speakers_to_csv(speakers: List[Speaker]) -> str:
     return "\n".join(lines)
 
 
-def sessions_to_csv(sessions: List[Session]) -> str:
+def sessions_to_csv(sessions: list[Session]) -> str:
     """
     Convert sessions to CSV format.
 

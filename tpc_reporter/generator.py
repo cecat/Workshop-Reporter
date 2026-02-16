@@ -6,7 +6,7 @@ Takes a track bundle (assembled data) and generates a markdown report using an L
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 
@@ -50,7 +50,7 @@ def load_prompt(prompt_name: str = "tpc_master_prompt_v2.yaml") -> str:
     if not prompt_path.exists():
         raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
 
-    with open(prompt_path, "r") as f:
+    with open(prompt_path) as f:
         prompt_data = yaml.safe_load(f)
 
     if "master_prompt" not in prompt_data:
@@ -59,7 +59,7 @@ def load_prompt(prompt_name: str = "tpc_master_prompt_v2.yaml") -> str:
     return prompt_data["master_prompt"]
 
 
-def format_track_bundle(bundle: Dict[str, Any]) -> str:
+def format_track_bundle(bundle: dict[str, Any]) -> str:
     """
     Format a track bundle as a string for the LLM prompt.
 
@@ -153,8 +153,8 @@ def format_track_bundle(bundle: Dict[str, Any]) -> str:
 
 
 def generate_report(
-    bundle: Dict[str, Any],
-    client: Optional[LLMClient] = None,
+    bundle: dict[str, Any],
+    client: LLMClient | None = None,
     prompt_name: str = "tpc_master_prompt_v2.yaml",
     max_tokens: int = 8000,
     temperature: float = 0.3,
@@ -202,8 +202,8 @@ def generate_report(
 
 def generate_report_from_file(
     bundle_path: str,
-    output_path: Optional[str] = None,
-    client: Optional[LLMClient] = None,
+    output_path: str | None = None,
+    client: LLMClient | None = None,
     **kwargs,
 ) -> str:
     """
@@ -222,7 +222,7 @@ def generate_report_from_file(
     if not bundle_path.exists():
         raise FileNotFoundError(f"Bundle file not found: {bundle_path}")
 
-    with open(bundle_path, "r") as f:
+    with open(bundle_path) as f:
         bundle = json.load(f)
 
     report = generate_report(bundle, client=client, **kwargs)

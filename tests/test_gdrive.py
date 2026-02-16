@@ -1,9 +1,6 @@
 """Tests for Google Drive collector module."""
 
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import Mock, patch
 
 from tpc_reporter.gdrive import (
     DOC_EXPORT_URL,

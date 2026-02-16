@@ -10,8 +10,6 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
-from urllib.parse import urlparse
 
 import requests
 
@@ -43,7 +41,7 @@ class DriveFile:
             return DRIVE_FILE_URL.format(file_id=self.file_id)
 
 
-def extract_file_id(url: str) -> Optional[str]:
+def extract_file_id(url: str) -> str | None:
     """
     Extract Google Drive file ID from various URL formats.
 
@@ -147,7 +145,7 @@ def download_file(
 def download_sheet(
     url_or_id: str,
     output_path: str,
-    sheet_gid: Optional[str] = None,
+    sheet_gid: str | None = None,
 ) -> bool:
     """
     Download a Google Sheet as CSV.
@@ -211,8 +209,8 @@ class CollectionConfig:
 
 def collect_track_data(
     track_id: str,
-    attendees_url: Optional[str],
-    notes_url: Optional[str],
+    attendees_url: str | None,
+    notes_url: str | None,
     output_dir: str,
 ) -> dict:
     """
@@ -328,7 +326,7 @@ def main():
     args = parser.parse_args()
 
     # Load config
-    with open(args.config, "r") as f:
+    with open(args.config) as f:
         config = json.load(f)
 
     # Collect data

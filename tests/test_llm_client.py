@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tpc_reporter.config_loader import Config, ConfigurationError, load_config
+from tpc_reporter.config_loader import ConfigurationError, load_config
 from tpc_reporter.llm_client import LLMClient, create_llm_client
 
 

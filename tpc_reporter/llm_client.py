@@ -7,7 +7,7 @@ based on configuration.yaml settings.
 
 import json
 import subprocess
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from tpc_reporter.config_loader import Config, load_config
 
@@ -15,7 +15,7 @@ from tpc_reporter.config_loader import Config, load_config
 class LLMClient:
     """Unified LLM client that works with multiple endpoints."""
 
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(self, config: Config | None = None):
         """
         Initialize LLM client.
 
@@ -54,7 +54,7 @@ class LLMClient:
 
     def chat_completion(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         **kwargs,
     ) -> str:
         """
@@ -80,8 +80,8 @@ class LLMClient:
 
     def _openai_completion(
         self,
-        messages: List[Dict[str, str]],
-        params: Dict[str, Any],
+        messages: list[dict[str, str]],
+        params: dict[str, Any],
     ) -> str:
         """OpenAI-compatible completion."""
         response = self.client.chat.completions.create(
@@ -95,8 +95,8 @@ class LLMClient:
 
     def _nim_ssh_completion(
         self,
-        messages: List[Dict[str, str]],
-        params: Dict[str, Any],
+        messages: list[dict[str, str]],
+        params: dict[str, Any],
     ) -> str:
         """NIM completion via SSH wrapper."""
         # Build curl command payload
@@ -169,7 +169,7 @@ class LLMClient:
         )
 
 
-def create_llm_client(endpoint: Optional[str] = None) -> LLMClient:
+def create_llm_client(endpoint: str | None = None) -> LLMClient:
     """
     Create LLM client with optional endpoint override.
 

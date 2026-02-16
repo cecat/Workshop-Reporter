@@ -6,7 +6,7 @@ Loads configuration.yaml and secrets.yaml, merging them appropriately.
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class ConfigurationError(Exception):
@@ -40,8 +40,8 @@ class Config:
 
     def __init__(
         self,
-        config_path: Optional[str] = None,
-        secrets_path: Optional[str] = None,
+        config_path: str | None = None,
+        secrets_path: str | None = None,
     ):
         """
         Initialize configuration.
@@ -75,20 +75,20 @@ class Config:
 
         self.active_endpoint = self._get_endpoint_config(self.active_endpoint_name)
 
-    def _load_yaml(self, path: Path) -> Dict[str, Any]:
+    def _load_yaml(self, path: Path) -> dict[str, Any]:
         """Load YAML file."""
         import yaml
 
         if not path.exists():
             raise ConfigurationError(f"Configuration file not found: {path}")
 
-        with open(path, "r") as f:
+        with open(path) as f:
             try:
                 return yaml.safe_load(f) or {}
             except yaml.YAMLError as e:
                 raise ConfigurationError(f"Error parsing {path}: {e}")
 
-    def _get_endpoint_config(self, endpoint_name: str) -> Dict[str, Any]:
+    def _get_endpoint_config(self, endpoint_name: str) -> dict[str, Any]:
         """Get configuration for a specific endpoint."""
         endpoints = self.config.get("endpoints", {})
         if endpoint_name not in endpoints:
@@ -113,7 +113,7 @@ class Config:
 
         return endpoint
 
-    def get_llm_client_params(self) -> Dict[str, Any]:
+    def get_llm_client_params(self) -> dict[str, Any]:
         """
         Get parameters for initializing LLM client.
 
@@ -165,8 +165,8 @@ class Config:
 
 
 def load_config(
-    config_path: Optional[str] = None,
-    secrets_path: Optional[str] = None,
+    config_path: str | None = None,
+    secrets_path: str | None = None,
 ) -> Config:
     """
     Load configuration and secrets.

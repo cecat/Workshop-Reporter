@@ -10,7 +10,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class AssemblyWarning:
     """Warning generated during assembly."""
 
     track_id: str
-    session_id: Optional[str]
+    session_id: str | None
     message: str
     severity: str = "warning"  # "warning" or "error"
 
@@ -29,8 +29,8 @@ class AssemblyWarning:
 class AssemblyResult:
     """Result of assembling a track bundle."""
 
-    bundle: Dict[str, Any]
-    warnings: List[AssemblyWarning] = field(default_factory=list)
+    bundle: dict[str, Any]
+    warnings: list[AssemblyWarning] = field(default_factory=list)
 
     @property
     def has_warnings(self) -> bool:
@@ -41,7 +41,7 @@ class AssemblyResult:
         return any(w.severity == "error" for w in self.warnings)
 
 
-def load_conference_data(conference_path: str) -> Dict[str, Any]:
+def load_conference_data(conference_path: str) -> dict[str, Any]:
     """
     Load conference structure from JSON file.
 
@@ -55,11 +55,11 @@ def load_conference_data(conference_path: str) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Conference file not found: {path}")
 
-    with open(path, "r") as f:
+    with open(path) as f:
         return json.load(f)
 
 
-def load_lightning_talks_csv(csv_path: str) -> List[Dict[str, Any]]:
+def load_lightning_talks_csv(csv_path: str) -> list[dict[str, Any]]:
     """
     Load lightning talks from CSV file.
 
@@ -81,7 +81,7 @@ def load_lightning_talks_csv(csv_path: str) -> List[Dict[str, Any]]:
         raise FileNotFoundError(f"Lightning talks CSV not found: {path}")
 
     talks = []
-    with open(path, "r", encoding="utf-8-sig") as f:
+    with open(path, encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         next(reader, None)  # Skip header row
 
@@ -111,7 +111,7 @@ def load_lightning_talks_csv(csv_path: str) -> List[Dict[str, Any]]:
     return talks
 
 
-def load_attendees_csv(csv_path: str) -> List[Dict[str, str]]:
+def load_attendees_csv(csv_path: str) -> list[dict[str, str]]:
     """
     Load attendees from CSV file.
 
@@ -128,7 +128,7 @@ def load_attendees_csv(csv_path: str) -> List[Dict[str, str]]:
         return []  # Missing attendees is not an error
 
     attendees = []
-    with open(path, "r", encoding="utf-8-sig") as f:
+    with open(path, encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
 
         for row in reader:
@@ -154,7 +154,7 @@ def load_attendees_csv(csv_path: str) -> List[Dict[str, str]]:
     return attendees
 
 
-def load_notes_file(notes_path: str) -> Optional[str]:
+def load_notes_file(notes_path: str) -> str | None:
     """
     Load session notes from a text file.
 
@@ -168,17 +168,17 @@ def load_notes_file(notes_path: str) -> Optional[str]:
     if not path.exists():
         return None
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return f.read()
 
 
 def assemble_track_bundle(
     track_id: str,
     track_name: str,
-    lightning_talks: List[Dict[str, Any]],
-    track_inputs_dir: Optional[str] = None,
-    room: Optional[str] = None,
-    sessions: Optional[List[Dict[str, Any]]] = None,
+    lightning_talks: list[dict[str, Any]],
+    track_inputs_dir: str | None = None,
+    room: str | None = None,
+    sessions: list[dict[str, Any]] | None = None,
 ) -> AssemblyResult:
     """
     Assemble a track bundle from various data sources.
@@ -313,8 +313,8 @@ def assemble_all_tracks(
     lightning_talks_path: str,
     track_inputs_base_dir: str,
     output_dir: str,
-    track_mapping: Optional[Dict[str, str]] = None,
-) -> Dict[str, AssemblyResult]:
+    track_mapping: dict[str, str] | None = None,
+) -> dict[str, AssemblyResult]:
     """
     Assemble bundles for all tracks.
 
