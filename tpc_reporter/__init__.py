@@ -20,6 +20,15 @@ from tpc_reporter.checker import (
     parse_verification_summary,
 )
 from tpc_reporter.config_loader import Config, ConfigurationError, load_config
+from tpc_reporter.gdrive import (
+    DriveFile,
+    collect_all_data,
+    collect_track_data,
+    download_doc,
+    download_file,
+    download_sheet,
+    extract_file_id,
+)
 from tpc_reporter.generator import (
     format_track_bundle,
     generate_report,
@@ -50,6 +59,14 @@ __all__ = [
     "Config",
     "ConfigurationError",
     "load_config",
+    # Google Drive
+    "DriveFile",
+    "collect_all_data",
+    "collect_track_data",
+    "download_doc",
+    "download_file",
+    "download_sheet",
+    "extract_file_id",
     # Generator
     "format_track_bundle",
     "generate_report",
