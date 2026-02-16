@@ -2,6 +2,15 @@
 TPC Workshop Reporter - Generate track reports from conference data.
 """
 
+from tpc_reporter.assembler import (
+    AssemblyResult,
+    AssemblyWarning,
+    assemble_all_tracks,
+    assemble_track_bundle,
+    load_attendees_csv,
+    load_lightning_talks_csv,
+    load_notes_file,
+)
 from tpc_reporter.checker import (
     VerificationResult,
     check_report,
@@ -22,18 +31,14 @@ from tpc_reporter.llm_client import LLMClient, create_llm_client
 __version__ = "0.1.0"
 
 __all__ = [
-    # Config
-    "Config",
-    "ConfigurationError",
-    "load_config",
-    # LLM Client
-    "LLMClient",
-    "create_llm_client",
-    # Generator
-    "format_track_bundle",
-    "generate_report",
-    "generate_report_from_file",
-    "load_prompt",
+    # Assembler
+    "AssemblyResult",
+    "AssemblyWarning",
+    "assemble_all_tracks",
+    "assemble_track_bundle",
+    "load_attendees_csv",
+    "load_lightning_talks_csv",
+    "load_notes_file",
     # Checker
     "VerificationResult",
     "check_report",
@@ -41,4 +46,16 @@ __all__ = [
     "extract_flags",
     "load_checker_prompt",
     "parse_verification_summary",
+    # Config
+    "Config",
+    "ConfigurationError",
+    "load_config",
+    # Generator
+    "format_track_bundle",
+    "generate_report",
+    "generate_report_from_file",
+    "load_prompt",
+    # LLM Client
+    "LLMClient",
+    "create_llm_client",
 ]
