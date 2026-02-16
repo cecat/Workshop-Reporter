@@ -36,6 +36,16 @@ from tpc_reporter.generator import (
     load_prompt,
 )
 from tpc_reporter.llm_client import LLMClient, create_llm_client
+from tpc_reporter.scraper import (
+    Session,
+    Speaker,
+    ScrapeResult,
+    scrape_sessions,
+    scrape_site,
+    scrape_speakers,
+    sessions_to_csv,
+    speakers_to_csv,
+)
 
 __version__ = "0.1.0"
 
@@ -75,4 +85,13 @@ __all__ = [
     # LLM Client
     "LLMClient",
     "create_llm_client",
+    # Scraper
+    "Session",
+    "Speaker",
+    "ScrapeResult",
+    "scrape_sessions",
+    "scrape_site",
+    "scrape_speakers",
+    "sessions_to_csv",
+    "speakers_to_csv",
 ]
