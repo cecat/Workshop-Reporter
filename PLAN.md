@@ -1,640 +1,355 @@
-# Implementation Plan: TPC Workshop Reporter
-## LangGraph Workflow Edition (March 31 - April 16, 2026)
+# Implementation Plan: TPC Workshop Reporter (Simplified)
+## Hackathon Edition
 
-**Team**: 4-8 developers (Python proficient, some LLM experience helpful)  
-**Architecture**: LangGraph workflow + tested components from TPC-Session-Reporter
-
----
-
-## Executive Summary
-
-We're building a **document processing workflow** that generates structured reports from TPC conference materials. After evaluating Academy (federated HPC middleware), we determined **LangGraph** is the right tool:
-
-- ✅ Purpose-built for LLM workflows
-- ✅ Simple Python API (no distributed systems complexity)
-- ✅ Built-in state management and checkpointing
-- ✅ Conditional edges for review gates
-- ✅ Wide adoption and documentation
-
-### What We're Building On
-
-We have an incomplete TPC-Session-Reporter prototype (~70% done) with:
-- ✅ **Tested LLM prompt** (carefully tuned for TPC25 sessions)
-- ✅ **Session matching logic** (handles acronyms, fuzzy matching)
-- ✅ **Data pipeline** (Google Sheets/Docs, HTML parsing)
-- ✅ **Appendix generation** (Python for tables, LLM for narrative)
-- ❌ **Missing**: LLM integration (~50 lines), multi-session orchestration
-
-**Strategy**: Complete the prototype first, then refactor into LangGraph workflow.
+**Team**: 4-6 developers (Python proficient)  
+**Goal**: Generate 8 draft track reports from TPC25 data, ready for human review  
+**Architecture**: Simple Python pipeline (no framework dependencies)
 
 ---
 
-## 0) Architecture: LangGraph Workflow
+## What We're Building
 
-### Workflow Graph
+A pipeline that:
+1. **Scrapes** the TPC website to get the conference structure (tracks, sessions, lightning talks)
+2. **Collects** notes and attendees from Google Drive (one folder per track)
+3. **Assembles** a data bundle per track (website data + Drive data)
+4. **Generates** a draft report per track using an LLM
+5. **Checks** each draft for hallucinations using a second LLM pass
+6. **Outputs** 8 Markdown reports for human review
 
-```
-[START]
-   ↓
-[ingest_node]
-   ↓
-[match_node] ──(low confidence?)──> [review_gate] ──> [match_node]
-   ↓ (good matches)
-[summarize_node]
-   ↓
-[evaluate_node] ──(QA flags?)──> [review_gate] ──> [publish_node]
-   ↓ (pass QA)
-[publish_node]
-   ↓
-[END]
-```
-
-### Workflow State
-
-```python
-from typing import TypedDict, List, Dict
-from tpc_reporter.schemas import Event, Session, Artifact, Match, ReportSection, QAResult
-
-class WorkflowState(TypedDict):
-    """LangGraph state passed between nodes"""
-    # Input
-    run_id: str
-    config_path: str
-    
-    # Data
-    event: Event
-    sessions: List[Session]
-    artifacts: List[Artifact]
-    
-    # Processing
-    matches: List[Match]
-    unmatched_artifacts: List[str]
-    
-    # Output
-    summaries: Dict[str, ReportSection]  # session_id -> summary
-    qa_results: Dict[str, QAResult]      # session_id -> QA
-    
-    # Control
-    phase: str  # Current node
-    needs_review: bool
-    review_queue_path: str
-```
-
-### Node Functions
-
-Each node is a Python function with signature:
-```python
-def node_name(state: WorkflowState) -> WorkflowState:
-    # Process state
-    # Return updated state
-    pass
-```
-
-**Nodes:**
-1. `ingest_node` - Parse sessions, extract text from files
-2. `match_node` - Link artifacts to sessions
-3. `summarize_node` - Generate summaries via LLM
-4. `evaluate_node` - Run QA checks
-5. `publish_node` - Assemble final reports
-6. `review_gate` - Export for human review, pause workflow
+### What It Does NOT Do (MVP Scope)
+- No LangGraph, no workflow framework
+- No PDF/PPTX parsing (lightning talks come from the website, notes from Google Docs)
+- No embedding-based matching (we have structured data)
+- No real-time collaboration
+- No automated retry/recovery (just re-run)
 
 ---
 
-## 1) Timeline
+## Data Flow
 
-### March 31 (2-4 hours): Kickoff
-- Team introductions
-- Demo TPC-Session-Reporter progress
-- LangGraph overview
-- Repository walkthrough
-- Task assignment
-
-### April 1-6: Async Work Phase 1
-**Goal**: Complete TPC-Session-Reporter, test on one session
-
-### April 7 (6-8 hours): Remote Sprint
-**Goal**: Refactor into LangGraph, test multi-session
-
-### April 8-13: Async Work Phase 2
-**Goal**: QA checks, review workflow, polish
-
-### April 14-16 (3 days): In-Person Hackathon
-**Goal**: Full TPC25 data, quality tuning, demo
-
----
-
-## 2) Team Roles
-
-### Minimum (4 people)
-1. **Workflow Lead** - LangGraph orchestration, state management
-2. **Data Pipeline Lead** - Ingestion, extraction, matching
-3. **LLM Lead** - Summarization, prompt engineering
-4. **QA/Testing Lead** - Evaluation, testing, fixtures
-
-### Optimal (6-8 people)
-5. **Prompt Engineer** - Tune LLM outputs
-6. **DevOps** - Setup, docs, CI
-7. **Domain Expert** - TPC knowledge, validate outputs
-8. **Flex** - Help where needed
-
----
-
-## 3) Pre-Hackathon Prep (Organizer: Charlie)
-
-### Critical (~8-10 hours, complete by March 28)
-
-#### A) Complete TPC-Session-Reporter LLM Integration (2-3 hours)
-
-The prototype is ~70% done. Wire in the missing LLM call:
-
-```python
-# In generate_report.py, around line 820:
-# Replace this stub:
-#     print("📝 Next step: Add AI-generated content...")
-
-# With actual LLM call:
-def generate_ai_content(session_info, filtered_talks, notes_content, master_prompt):
-    """Call LLM to generate discussion/outcomes sections"""
-    from openai import OpenAI
-    client = OpenAI()  # Uses OPENAI_API_KEY from env
-    
-    # Build prompt with session data
-    prompt = master_prompt.format(
-        session_title=session_info['title'],
-        session_leaders=session_info['leaders'],
-        lightning_talks=format_talks_for_prompt(filtered_talks),
-        discussion_notes=notes_content or "No discussion notes available"
-    )
-    
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a technical report writer."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.3,
-        max_tokens=4000
-    )
-    
-    return response.choices[0].message.content
-
-# Then insert AI content into report_framework
-ai_content = generate_ai_content(session_info, filtered_talks, notes, master_prompt)
-report = report_framework.replace("<!-- AI_CONTENT_PLACEHOLDER -->", ai_content)
+```
+tpc25.org/sessions/ ──scrape──→ conference.json
+                                      │
+Google Drive folders ──collect──→ track_inputs/
+                                      │
+                              ┌───assemble───┐
+                              │              │
+                        track_bundle_1.json ... track_bundle_8.json
+                              │              │
+                        ┌──generate──┐  ┌──generate──┐
+                        │            │  │            │
+                  draft_1.md    draft_2.md  ...  draft_8.md
+                        │            │
+                  ┌──check──┐  ┌──check──┐
+                  │         │  │         │
+            report_1.md  report_2.md  ...  report_8.md
+                  │
+            (human review)
 ```
 
-**Test**: Run on MAPE session, verify complete report generated.
+---
 
-#### B) Prepare TPC25 Dataset (3-4 hours)
+## Data Model
 
-1. Download materials from TPC25.org:
-   - Session HTML: `curl https://tpc25.org/sessions/ > data/tpc25/sessions.html`
-   - Lightning talks: Copy Google Sheets URL, convert to CSV export URL
-   - Attendee list (if available)
+### Conference Structure (from website)
 
-2. Organize:
-   ```bash
-   mkdir -p data/tpc25/artifacts
-   # Copy all files with clear names:
-   # - breakout_dwarf_notes.txt
-   # - breakout_mape_slides.pptx
-   # - plenary_keynote.pptx
-   ```
+```json
+{
+  "conference": {
+    "id": "tpc25",
+    "name": "TPC25",
+    "website": "https://tpc25.org"
+  },
+  "tracks": [
+    {
+      "id": "workflows",
+      "name": "Workflows",
+      "room": "Main Plenary",
+      "sessions": [
+        {
+          "id": "dwarf-1",
+          "title": "DWARF: Keynote and Systems Software for Agents",
+          "parent_workshop": "Data Workflows, Agents, and Reasoning Frameworks (DWARF)",
+          "slot": "2025-07-30T16:00",
+          "duration_minutes": 90,
+          "leaders": [
+            {"name": "Ian Foster", "affiliation": "Argonne National Laboratory"}
+          ],
+          "lightning_talks": [
+            {
+              "title": "Academy: Empowering Scientific Workflows with Federated Agents",
+              "authors": [{"name": "Kyle Chard", "affiliation": "University of Chicago"}],
+              "abstract": "..."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
 
-3. Create `data/tpc25/sessions.json` manually (or use working extractor from prototype)
+### Google Drive Layout (one folder per track)
 
-#### C) Install LangGraph (15 min)
+```
+TPC25 Track Reports/
+  ├── Workflows/
+  │   ├── Session1_Attendees    (Google Sheet: Name, Organization columns)
+  │   ├── Session1_Notes        (Google Doc: free-form scribe notes)
+  │   ├── Session2_Attendees
+  │   ├── Session2_Notes
+  │   └── ...
+  ├── Initiatives/
+  │   └── ...
+  └── ... (8 folders total for TPC26)
+```
+
+### Track Bundle (assembled per track, fed to LLM)
+
+```json
+{
+  "track": {"id": "workflows", "name": "Workflows"},
+  "sessions": [
+    {
+      "id": "dwarf-1",
+      "title": "DWARF: Keynote and Systems Software for Agents",
+      "slot": "2025-07-30T16:00",
+      "leaders": ["Ian Foster (ANL)", "Neeraj Kumar (PNNL)"],
+      "lightning_talks": ["... from website ..."],
+      "attendees": ["... from Google Sheet ..."],
+      "notes": "... from Google Doc ..."
+    }
+  ],
+  "sources": ["tpc25.org/sessions/", "Drive: Workflows/Session1_Notes", "..."]
+}
+```
+
+---
+
+## Repository Structure
+
+```
+workshop-reporter/
+├── tpc_reporter/
+│   ├── __init__.py
+│   ├── scraper.py          # Parse TPC website → conference.json
+│   ├── gdrive.py           # Collect Google Drive data → track_inputs/
+│   ├── assembler.py         # Merge website + Drive → track_bundle.json
+│   ├── generator.py         # LLM report generation
+│   ├── checker.py           # Hallucination check (second LLM pass)
+│   ├── llm_client.py        # Unified LLM interface (OpenAI-compatible)
+│   └── cli.py               # Command-line interface
+├── prompts/
+│   └── tpc_master_prompt_v2.yaml
+├── config/
+│   ├── configuration.yaml   # LLM endpoint config
+│   └── secrets.yaml.template
+├── data/                    # Scraped/collected input data
+│   └── tpc25/
+│       ├── conference.json
+│       └── track_inputs/
+├── output/                  # Generated reports
+│   └── tpc25/
+│       ├── workflows.md
+│       ├── initiatives.md
+│       └── ...
+├── tests/
+│   ├── test_scraper.py
+│   ├── test_assembler.py
+│   └── fixtures/
+│       └── sample_track_bundle.json
+├── ANALYSIS.md
+├── PLAN.md
+├── README.md
+└── pyproject.toml
+```
+
+---
+
+## Implementation Steps
+
+### Step 1: Website Scraper (`scraper.py`)
+**Effort**: 3-4 hours | **Owner**: Data person  
+**Dependencies**: `beautifulsoup4`, `requests`
+
+Parse the TPC sessions page and extract:
+- Track names and rooms
+- Session titles, times, leaders
+- Lightning talk titles, authors, affiliations, abstracts
+- Session descriptions
+
+Output: `data/tpc25/conference.json`
+
+**Key challenge**: The TPC25 sessions page is a single long HTML page with sections per track. The scraper needs to correctly identify track boundaries and session-within-track boundaries. The HTML uses headings (h2 for tracks, h3/h4 for sessions) which makes this tractable.
+
+**Test**: Verify all 6 tracks, ~30 sessions, ~120 lightning talks are captured with correct track/session associations.
 
 ```bash
-conda create -n workshop-reporter python=3.11
-conda activate workshop-reporter
-pip install langgraph langchain langchain-openai
-pip install pydantic python-docx python-pptx pyyaml
-pip install beautifulsoup4 requests
-
-# Test
-python -c "from langgraph.graph import StateGraph; print('✅ LangGraph ready')"
+python -m tpc_reporter.scraper --url https://tpc25.org/sessions/ --output data/tpc25/conference.json
 ```
 
-#### D) Create Repository Structure (30 min)
+### Step 2: Google Drive Collector (`gdrive.py`)
+**Effort**: 2-3 hours | **Owner**: Data person  
+**Dependencies**: `google-api-python-client` or simple URL export
+
+Two approaches (team picks one):
+1. **Google API** (robust): Use Google Drive/Sheets/Docs API with service account
+2. **Export URLs** (simpler): Use public sharing + export links
+   - Sheets: `https://docs.google.com/spreadsheets/d/{ID}/export?format=csv`
+   - Docs: `https://docs.google.com/document/d/{ID}/export?format=txt`
+
+Output: `data/tpc25/track_inputs/{track_id}/session{N}_attendees.csv` and `session{N}_notes.txt`
+
+**Test**: Create a sample Google Drive folder with one track's data, verify extraction.
 
 ```bash
-cd ~/Dropbox/MyCode/Workshop-Reporter
-
-# Package structure
-mkdir -p tpc_reporter/{nodes,schemas,tools,prompts}
-touch tpc_reporter/__init__.py
-touch tpc_reporter/nodes/__init__.py
-touch tpc_reporter/schemas/__init__.py
-touch tpc_reporter/tools/__init__.py
-
-# Config and tests
-mkdir -p config/{events,templates}
-mkdir -p tests/{fixtures/tpc24_mini,unit,integration}
-mkdir -p runs
+python -m tpc_reporter.gdrive --folder-url "https://drive.google.com/..." --output data/tpc25/track_inputs/
 ```
 
-####E) Port Key Components to Tools (1-2 hours)
+### Step 3: Data Assembler (`assembler.py`)
+**Effort**: 1-2 hours | **Owner**: Anyone  
 
-Extract from TPC-Session-Reporter `generate_report.py`:
+Merge `conference.json` with `track_inputs/` to create one `track_bundle.json` per track.
 
-**`tpc_reporter/tools/matching.py`**:
-```python
-def session_matches(target_group: str, session_label: str) -> float:
-    """
-    Flexible session matching with confidence score.
-    Returns 0.0-1.0.
-    
-    Tested on TPC25 data (MAPE, DWARF sessions).
-    """
-    if not target_group or not session_label:
-        return 0.0
-    
-    target = target_group.upper().strip()
-    session = session_label.upper().strip()
-    
-    # Exact match
-    if target == session:
-        return 1.0
-    
-    # Acronym in parentheses
-    if f"({target})" in session:
-        return 0.95
-    
-    # Containment
-    if target in session:
-        return 0.85
-    if session in target:
-        return 0.80
-    
-    # Word overlap
-    target_words = set(target.replace(',', '').replace(':', '').split())
-    session_words = set(session.replace(',', '').replace(':', '').split())
-    overlap = len(target_words & session_words)
-    
-    if overlap >= min(2, len(target_words)):
-        return 0.70
-    
-    return 0.0
-```
-
-**`tpc_reporter/tools/web_fetch.py`**: Copy `download_from_url()` function
-
-**`tpc_reporter/tools/extractors.py`**: Copy text extraction functions
-
-#### F) Copy Tested Prompt (Already Done)
-
-The tested prompt is in `config/prompts/tpc25_master_prompt.yaml`
-
-#### G) Create Test Fixture (1 hour)
+Logic:
+- Match Google Drive files to sessions by filename convention or folder structure
+- Handle missing data: if no notes for a session, set `notes: null`
+- Validate: warn if a session has no notes AND no attendees
 
 ```bash
-mkdir -p tests/fixtures/tpc24_mini/artifacts
+python -m tpc_reporter.assembler --conference data/tpc25/conference.json --inputs data/tpc25/track_inputs/ --output data/tpc25/bundles/
 ```
 
-Copy MAPE session data from TPC-Session-Reporter:
-- Lightning talks CSV (filtered for MAPE)
-- Attendees CSV (sample)
-- Session HTML snippet
-- Expected output (draft-report-MAPE.md)
+### Step 4: Report Generator (`generator.py`)
+**Effort**: 2-3 hours | **Owner**: LLM person  
 
-#### H) Test Setup End-to-End (30 min)
+Load the master prompt + track bundle, call the LLM, save the output.
+
+**Context window consideration**: A full track bundle (5 sessions × ~6 lightning talks with abstracts + notes) could be 15-30K tokens of input. GPT-4o-mini handles 128K context, so this is fine. For very large tracks, consider:
+- Sending lightning talk abstracts in a condensed format (title + author + first sentence)
+- Generating the appendix (full abstracts) separately from the narrative
 
 ```bash
-conda activate workshop-reporter
+python -m tpc_reporter.generator --bundle data/tpc25/bundles/workflows.json --output output/tpc25/workflows_draft.md
+```
 
-# Test TPC-Session-Reporter with LLM
-cd ~/Dropbox/MyCode/TPC-Session-Reporter
-python generate_report.py -g "MAPE"
-# Should produce complete draft-report-MAPE.md
+### Step 5: Hallucination Checker (`checker.py`)
+**Effort**: 1-2 hours | **Owner**: LLM person  
 
-# Verify Workshop-Reporter setup
-cd ~/Dropbox/MyCode/Workshop-Reporter
-python -c "from tpc_reporter.tools.matching import session_matches; print('✅ Tools OK')"
-ls tests/fixtures/tpc24_mini/
-ls data/tpc25/
+Second LLM pass that compares the draft against source data and flags:
+- Names/organizations not in source data
+- Specific claims not supported by notes
+- Lightning talks that appear fabricated
+
+Output: The draft with inline `[FLAG: ...]` annotations, plus a summary of flags.
+
+```bash
+python -m tpc_reporter.checker --draft output/tpc25/workflows_draft.md --bundle data/tpc25/bundles/workflows.json --output output/tpc25/workflows.md
+```
+
+### Step 6: CLI & Orchestration (`cli.py`)
+**Effort**: 1-2 hours | **Owner**: Anyone  
+
+Simple CLI that chains the steps:
+
+```bash
+# Full pipeline for all tracks
+tpc_reporter run --config config/tpc25.yaml
+
+# Individual steps
+tpc_reporter scrape --url https://tpc25.org/sessions/
+tpc_reporter collect --drive-folder <URL>
+tpc_reporter generate --track workflows
+tpc_reporter generate-all
+tpc_reporter check --track workflows
 ```
 
 ---
 
-## 4) Participant Prep (Before March 31)
+## Hackathon Schedule
 
-### Required (Everyone)
-1. Clone repository
-2. Install Python 3.11
-3. Create conda environment: `conda create -n workshop-reporter python=3.11`
-4. Install dependencies: `pip install langgraph langchain pydantic`
-5. Get OpenAI API key, test it
-6. Join Slack/Discord
-7. Review README.md and PLAN.md
+### Day 1: Data Pipeline (6-8 hours)
+- **Morning**: Scraper (Step 1) — get conference.json working
+- **Afternoon**: Google Drive collector (Step 2) + Assembler (Step 3)
+- **End of day**: One complete track_bundle.json assembled from real data
 
-### Recommended
-- Read LangGraph docs: https://langchain-ai.github.io/langgraph/
-- Review TPC-Session-Reporter: `reference/tpc-session-reporter/`
-- Familiarize with Pydantic
-- Review `python-docx`, `python-pptx` docs
+### Day 2: Report Generation (6-8 hours)
+- **Morning**: Generator (Step 4) — get one report working, iterate on prompt
+- **Afternoon**: Checker (Step 5) + CLI (Step 6)
+- **End of day**: One complete track report, end-to-end
 
----
-
-## 5) March 31 Kickoff Agenda
-
-### Hour 1: Orientation
-- Introductions
-- TPC context, demo working TPC-Session-Reporter output
-- Why LangGraph (not Academy)
-- Architecture overview
-
-### Hour 2: Technical Deep Dive
-- LangGraph crash course:
-  - `StateGraph`, nodes, edges
-  - State passing
-  - Checkpointing
-  - Conditional edges (review gates)
-- Walk through TPC-Session-Reporter code
-- Show what to preserve
-
-### Hour 3-4: Setup & Tasks
-- Environment verification
-- Role assignments
-- Task assignments for April 1-6
-- Create GitHub issues
+### Day 3: Scale & Polish (6-8 hours)
+- **Morning**: Run all 6 TPC25 tracks (or 8 for TPC26), fix issues
+- **Afternoon**: Review outputs, tune prompt, documentation
+- **End of day**: All reports generated, demo ready
 
 ---
 
-## 6) April 1-6: Complete TPC-Session-Reporter
+## Team Roles
 
-### Priority 1 (Must Complete Before April 7)
+| Role | Focus | Steps |
+|------|-------|-------|
+| **Data Lead** | Scraping, Google Drive, data assembly | Steps 1-3 |
+| **LLM Lead** | Prompt engineering, generation, checking | Steps 4-5 |
+| **Integration Lead** | CLI, testing, documentation | Step 6 + testing |
+| **Domain Expert** | Review outputs, validate quality | Quality review |
 
-**Issue #1: Wire LLM into TPC-Session-Reporter** [2-3 hours]  
-Owner: LLM Lead
-- Add `generate_ai_content()` function
-- Call OpenAI API with tested prompt
-- Insert result into report framework
-- Test on MAPE session
-
-**Issue #2: Test on Multiple Sessions** [1-2 hours]  
-Owner: QA Lead
-- Run on MAPE, DWARF, one other session
-- Verify outputs are correct
-- Document any issues
-
-**Issue #3: Port to tools/matching.py** [1-2 hours]  
-Owner: Data Pipeline Lead
-- Extract `session_matches()` from generate_report.py
-- Add unit tests
-- Verify works identically
-
-**Issue #4: Port to tools/extractors.py** [2 hours]  
-Owner: Data Pipeline Lead
-- Extract text extraction functions
-- Add unit tests for each file type
-
-**Issue #5: Create Schemas** [2 hours]  
-Owner: Workflow Lead
-- `tpc_reporter/schemas/state.py` - WorkflowState TypedDict
-- `tpc_reporter/schemas/event.py` - Event, Session
-- `tpc_reporter/schemas/artifact.py` - Artifact
-- `tpc_reporter/schemas/match.py` - Match
-- `tpc_reporter/schemas/report.py` - ReportSection, QAResult
-
-**Issue #6: LangGraph Hello World** [1-2 hours]  
-Owner: Workflow Lead
-- Create minimal 2-node workflow
-- Test state passing
-- Verify checkpointing works
+With 4 people, everyone picks a role. With 6+, pair up on the bigger steps.
 
 ---
 
-## 7) April 7: Remote Sprint (6-8 hours)
+## Dependencies
 
-### Goal
-Refactor TPC-Session-Reporter into LangGraph workflow, test multi-session
+```toml
+[project]
+dependencies = [
+    "beautifulsoup4>=4.12",
+    "requests>=2.31",
+    "openai>=1.0",
+    "pyyaml>=6.0",
+    "click>=8.0",        # CLI framework
+]
 
-### Morning (9 AM - 12 PM)
-
-**9:00 Standup** (30 min)
-- Status updates
-- Verify TPC-Session-Reporter works
-- Plan refactoring approach
-
-**9:30-12:00 Sprint**
-- **Team A** (Workflow + DevOps): Create LangGraph workflow skeleton
-- **Team B** (Data + LLM): Refactor functions into node functions
-- **Team C** (QA): Create integration tests
-
-### Midday (12:00-12:30)
-- Demo progress
-- Surface blockers
-
-### Afternoon (12:30-4:00 PM)
-
-**Integration**:
-- Wire all nodes into workflow
-- Test on fixture (single session)
-- Test on real data (MAPE session)
-- Fix bugs
-
-**4:00 PM Demo** (30 min)
-- Show workflow running end-to-end
-- Celebrate progress
-
-### Target Deliverables
-- ✅ LangGraph workflow with 5 nodes
-- ✅ Works on single session
-- ✅ State persists to disk
-- ✅ Can checkpoint and resume
-
----
-
-## 8) April 8-13: Multi-Session + QA
-
-### Priority 1
-
-**Issue #7: Multi-Session Processing** [3-4 hours]  
-Owner: Workflow Lead
-- Loop over all sessions in `summarize_node`
-- Generate summary for each
-- Test on 3-5 sessions
-
-**Issue #8: QA Checks** [2-3 hours]  
-Owner: QA Lead
-- Implement `evaluate_node`
-- Check: coverage, completeness, confidence
-- Flag issues for review
-
-**Issue #9: Review Gate** [2-3 hours]  
-Owner: Workflow Lead
-- Implement conditional edge after `match_node`
-- Export low-confidence matches to `review_queue/`
-- Implement `resume` command
-
-**Issue #10: Publisher** [2-3 hours]  
-Owner: Any available
-- Implement `publish_node`
-- Generate per-session Markdown files
-- Assemble full meeting report
-
-**Issue #11: Appendix Generation** [2 hours]  
-Owner: LLM Lead
-- Port `generate_attendees_appendix()` from prototype
-- Port `generate_lightning_talks_appendix()`
-- Integrate into publisher
-
-### Priority 2
-
-**Issue #12: CLI** [1-2 hours]  
-Owner: DevOps
-- Implement `tpc_reporter run --config <event.yaml>`
-- Implement `tpc_reporter resume --run <run_id>`
-- Add status command
-
-**Issue #13: Documentation** [2 hours]  
-Owner: DevOps
-- Update docstrings
-- Create simple architecture diagram
-- Create quickstart guide
-
----
-
-## 9) April 14-16: In-Person Hackathon
-
-### Day 1 (April 14): Full Pipeline
-**Morning**: Run on all TPC25 sessions  
-**Afternoon**: Bug bash, fix critical issues  
-**Goal**: Complete reports for all sessions
-
-### Day 2 (April 15): Quality
-**Morning**: Review outputs, tune prompts  
-**Afternoon**: Documentation, code cleanup  
-**Goal**: High-quality outputs ready for TPC use
-
-### Day 3 (April 16): Demo
-**Morning**: Final testing, validate outputs  
-**Afternoon**: Demo prep, celebrate  
-**4 PM**: Demo presentation  
-**Goal**: Deliver working system to TPC
-
----
-
-## 10) Success Metrics
-
-### MVP (Must Have)
-- ✅ Works on real TPC25 data (all sessions)
-- ✅ Accurate summaries using tested prompt
-- ✅ Full meeting report generated
-- ✅ QA catches issues
-- ✅ Review workflow usable
-- ✅ Documentation clear
-- ✅ Tests pass
-
-### Stretch Goals
-- Embedding-based matching
-- Streamlit review UI
-- Cost tracking
-- Parallel processing
-
----
-
-## 11) Key Differences from Earlier Plans
-
-### What Changed
-- ❌ **Not using Academy** - Architectural overkill for document processing
-- ✅ **Using LangGraph** - Purpose-built for LLM workflows
-- ✅ **Simpler architecture** - Just Python, no distributed systems
-- ✅ **Complete prototype first** - Then refactor, not build from scratch
-
-### What Stayed
-- ✅ Tested prompt from TPC-Session-Reporter
-- ✅ Session matching logic
-- ✅ Appendix generation patterns
-- ✅ Data pipeline (Google Sheets/Docs)
-- ✅ Hybrid Python + LLM approach
-
----
-
-## 12) Dependencies
-
-```
-# Core
-langgraph >= 0.1
-langchain >= 0.1
-langchain-openai >= 0.1
-pydantic >= 2.0
-
-# Document processing
-python-docx >= 1.0
-python-pptx >= 0.6.21
-beautifulsoup4 >= 4.12
-
-# Utilities
-pyyaml >= 6.0
-requests >= 2.31
-
-# Dev
-pytest >= 7.0
-black
-ruff
+[project.optional-dependencies]
+google = [
+    "google-api-python-client>=2.0",
+    "google-auth>=2.0",
+]
+dev = [
+    "pytest>=7.0",
+]
 ```
 
 ---
 
-## Appendix: LangGraph Example
+## Definition of Done
+
+- [ ] `conference.json` captures all TPC25 tracks, sessions, and lightning talks
+- [ ] At least one track has complete input data (website + notes + attendees)
+- [ ] Draft reports generated for all available tracks
+- [ ] Hallucination checker runs and flags issues
+- [ ] End-to-end pipeline runs with a single command
+- [ ] Documentation explains how to set up and run
+- [ ] At least one track report reviewed by a human and deemed "good draft"
+
+---
+
+## Post-Hackathon: Path to Agentic (Phase 2)
+
+Once the pipeline works, making it agentic is wrapping each step as an LLM tool:
 
 ```python
-from langgraph.graph import StateGraph, END
-from typing import TypedDict
+tools = [
+    {"name": "scrape_website", "fn": scraper.scrape, "description": "..."},
+    {"name": "collect_drive", "fn": gdrive.collect, "description": "..."},
+    {"name": "assemble_track", "fn": assembler.assemble, "description": "..."},
+    {"name": "generate_report", "fn": generator.generate, "description": "..."},
+    {"name": "check_report", "fn": checker.check, "description": "..."},
+]
 
-class State(TypedDict):
-    message: str
-    count: int
-
-def node1(state: State) -> State:
-    return {"message": "Hello", "count": state["count"] + 1}
-
-def node2(state: State) -> State:
-    return {"message": f"{state['message']} World", "count": state["count"] + 1}
-
-# Build graph
-workflow = StateGraph(State)
-workflow.add_node("node1", node1)
-workflow.add_node("node2", node2)
-workflow.add_edge("node1", "node2")
-workflow.add_edge("node2", END)
-workflow.set_entry_point("node1")
-
-# Compile
-app = workflow.compile()
-
-# Run
-result = app.invoke({"message": "", "count": 0})
-# {"message": "Hello World", "count": 2}
+# User says: "Generate the Workflows track report for TPC26"
+# LLM with tool-use decides which tools to call and in what order
 ```
 
----
-
-## Quick Reference
-
-### Key Files to Create
-```
-tpc_reporter/
-  workflow.py              # LangGraph workflow definition
-  nodes/
-    ingest.py
-    match.py
-    summarize.py
-    evaluate.py
-    publish.py
-  schemas/
-    state.py               # WorkflowState TypedDict
-    event.py, artifact.py, match.py, report.py
-  tools/
-    matching.py            # From TPC-Session-Reporter
-    extractors.py
-    web_fetch.py
-  cli.py
-```
-
-### Important Links
-- LangGraph: https://langchain-ai.github.io/langgraph/
-- TPC-Session-Reporter: `reference/tpc-session-reporter/`
-- TPC25 sessions: https://tpc25.org/sessions/
+This is where LangGraph or similar may add value for managing multi-step tool calling with error recovery. But the tools themselves are just the functions we built.
