@@ -4,6 +4,19 @@
 # Active LLM endpoint (choose one: openai or nim_spark)
 active_endpoint: "openai"
 
+# Data Input Sources
+data_sources:
+  # Google Drive documents (publicly accessible example data)
+  google_drive:
+    lightning_talks_url: "https://docs.google.com/spreadsheets/d/1QfWJmHCyGU7k4u2MJ1GXtD8aF-p49B7cNRzwEPIaZBA/edit?gid=0#gid=0"
+    attendees_url: "https://docs.google.com/spreadsheets/d/1QfWJmHCyGU7k4u2MJ1GXtD8aF-p49B7cNRzwEPIaZBA/edit?gid=1899086252#gid=1899086252"
+    notes_url: "https://docs.google.com/document/d/1hpkCiA5uL4KxH-OxUNl5r7soCl5FxL2RqWrGgNbIlBs/edit?tab=t.0"
+  
+  # Conference website (for future use when scraping is debugged)
+  conference_website:
+    url: "https://tpc26.org"  # optional
+    enabled: false  # toggle to true when ready to use
+
 # LLM Endpoint Configurations
 endpoints:
   # OpenAI API endpoint
