@@ -27,9 +27,43 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev,scraper]"
 
+    - name: Validate test collection
+      run: |
+        # Collect tests and check for errors or low count
+        output=$(pytest tests/ --collect-only -q 2>&1)
+        echo "$output"
+        
+        # Extract the count from last line (format: "N tests collected" or "N test/N errors")
+        last_line=$(echo "$output" | tail -1)
+        
+        # Check for collection errors
+        if echo "$last_line" | grep -q "error"; then
+          echo "ERROR: Test collection failed with errors"
+          exit 1
+        fi
+        
+        # Extract test count (portable - first number in line)
+        count=$(echo "$last_line" | grep -oE '[0-9]+' | head -1)
+        
+        # Validate we got a number
+        if [ -z "$count" ]; then
+          echo "ERROR: Could not parse test count from: $last_line"
+          exit 1
+        fi
+        
+        # Fail if below threshold (we expect ~139 tests)
+        if [ "$count" -lt 80 ]; then
+          echo "ERROR: Only $count tests collected (expected at least 80)"
+          exit 1
+        fi
+        
+        echo "✓ Successfully collected $count tests"
+
     - name: Run tests
       run: |
-        pytest tests/ -v --tb=short
+        pytest tests/ -v --tb=short \
+          -W error::pytest.PytestCollectionWarning \
+          --strict-markers
 
   lint:
     runs-on: ubuntu-latest
