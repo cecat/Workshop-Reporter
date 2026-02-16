@@ -1,0 +1,30 @@
+.gitignore
+.DS_Store
+__pycache__/
+json_cache/
+src/__pycache__/
+*.json
+!tests/fixtures/*.json
+*.jsonl
+*.bak
+*.log
+*.txt
+# Secrets
+secrets.yml
+secrets.yaml
+openai_access_token.txt
+
+# Local Configuration files
+
+# editor temp & patch artifacts
+*.sw?
+*.orig
+*.rej
+*~  # editor backups
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+.eggs/
+

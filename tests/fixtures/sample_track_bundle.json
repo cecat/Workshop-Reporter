@@ -1,0 +1,69 @@
+{
+  "track": {
+    "id": "track-1",
+    "name": "Data Workflows and Agents",
+    "room": "Main Plenary"
+  },
+  "sessions": [
+    {
+      "id": "dwarf-1",
+      "title": "DWARF: Keynote and Systems Software for Agents",
+      "slot": "2025-07-30T09:00",
+      "leaders": [
+        {"name": "Ian Foster", "affiliation": "Argonne National Laboratory"},
+        {"name": "Neeraj Kumar", "affiliation": "Pacific Northwest National Laboratory"}
+      ],
+      "lightning_talks": [
+        {
+          "title": "Academy: Empowering Scientific Workflows with Federated Agents",
+          "authors": [
+            {"name": "Kyle Chard", "affiliation": "University of Chicago"},
+            {"name": "Ian Foster", "affiliation": "Argonne National Laboratory"}
+          ],
+          "abstract": "Academy is a federated agent framework that enables scientific workflows to be executed across distributed resources. We demonstrate how Academy can coordinate multiple agents to perform complex data analysis tasks while maintaining data sovereignty."
+        },
+        {
+          "title": "Automated Pipeline for LLM Training Data Curation",
+          "authors": [
+            {"name": "Jane Smith", "affiliation": "Test Labs"}
+          ],
+          "abstract": "We present an automated pipeline for curating high-quality training data for large language models. Our approach uses multi-agent systems to filter, validate, and organize data from diverse sources."
+        }
+      ],
+      "attendees": [
+        {"name": "Alice Johnson", "organization": "University of Chicago"},
+        {"name": "Bob Williams", "organization": "Argonne National Laboratory"},
+        {"name": "Carol Martinez", "organization": "Pacific Northwest National Laboratory"}
+      ],
+      "notes": "Session began with Ian Foster presenting the keynote on the current state of agent-based systems in scientific computing. Key discussion points included:\n\n1. The need for standardized interfaces between agents\n2. Challenges in maintaining state across distributed systems\n3. Security considerations for federated agent networks\n\nThe group agreed that a common protocol for agent communication would accelerate adoption. Action item: Form a working group to draft initial protocol specifications."
+    },
+    {
+      "id": "dwarf-2",
+      "title": "DWARF: Agent Frameworks and Applications",
+      "slot": "2025-07-30T14:00",
+      "leaders": [
+        {"name": "Neeraj Kumar", "affiliation": "Pacific Northwest National Laboratory"}
+      ],
+      "lightning_talks": [
+        {
+          "title": "Multi-Agent Coordination for Climate Modeling",
+          "authors": [
+            {"name": "David Chen", "affiliation": "NOAA"}
+          ],
+          "abstract": "This talk presents a novel approach to coordinating autonomous agents for climate modeling workflows. We show how multiple specialized agents can collaborate to process satellite data, run simulations, and validate results."
+        }
+      ],
+      "attendees": [
+        {"name": "Alice Johnson", "organization": "University of Chicago"},
+        {"name": "David Chen", "organization": "NOAA"},
+        {"name": "Eve Brown", "organization": "Stanford University"}
+      ],
+      "notes": "Afternoon session focused on practical applications. David Chen's presentation on climate modeling sparked significant discussion about:\n\n1. Data provenance tracking in multi-agent systems\n2. Handling partial failures gracefully\n3. Benchmarking agent performance\n\nNext steps: Participants will share benchmarking datasets and metrics for comparison."
+    }
+  ],
+  "sources": [
+    "https://tpc26.org/sessions/",
+    "Google Drive: TPC26-Artifacts/Track-1/attendees",
+    "Google Drive: TPC26-Artifacts/Track-1/Track-1-notes"
+  ]
+}
