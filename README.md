@@ -85,17 +85,33 @@ python3 test_downloads.py  # Modify with your URLs
 
 ### 5. Create Track Bundle
 
-Assemble the downloaded data into a track bundle. Use `create_track1_bundle.py` as a template:
+Assemble the downloaded data into a track bundle JSON file. You'll need to write a Python script to parse your specific CSV/text files and create the bundle format.
 
-```python
-# Modify paths to your downloaded files
-python3 create_track_bundle.py
+**Bundle format:**
+```json
+{
+  "track": {
+    "id": "track-1",
+    "name": "Track Name",
+    "room": "Room Name"
+  },
+  "sessions": [
+    {
+      "id": "session-1",
+      "title": "Session Title",
+      "slot": "2025-07-30T09:00",
+      "leaders": [],
+      "lightning_talks": [{"title": "...", "authors": [...], "abstract": "..."}],
+      "attendees": [{"name": "...", "organization": "..."}],
+      "notes": "Discussion notes text..."
+    }
+  ],
+  "sources": ["List of data sources"]
+}
 ```
 
-This creates `data/bundles/track_bundle.json` with:
-- Lightning talks filtered by track
-- Attendees list (merged with talk authors)
-- Session notes
+**Helper script template:**
+See the repository's test scripts for examples of parsing Google Drive data into bundles.
 
 ### 6. Generate Report
 
@@ -109,32 +125,85 @@ This runs:
 2. **Verification**: Checks for hallucinations against source data
 3. **Output**: Saves final report with any flags marked
 
-## Working with Different Input Files
+## Creating Bundle JSON from Your Data
 
-### Option 1: Modify the Bundle Script
-
-Edit `create_track_bundle.py` to point to your files:
-```python
-# Change these paths
-with open("YOUR_LIGHTNING_TALKS.csv", "r") as f:
-    # ...
-with open("YOUR_ATTENDEES.csv", "r") as f:
-    # ...
-```
-
-### Option 2: Use Python Directly
+You'll need to write a Python script to parse your downloaded CSV/text files and create a bundle JSON. Here's a template:
 
 ```python
 import json
-from tpc_reporter.gdrive import download_sheet, download_doc
+import csv
+from pathlib import Path
 
-# Download your files
-download_sheet("YOUR_TALKS_URL", "talks.csv")
-download_sheet("YOUR_ATTENDEES_URL", "attendees.csv") 
-download_doc("YOUR_NOTES_URL", "notes.txt")
+def create_bundle(talks_csv, attendees_csv, notes_txt, track_name):
+    """Create bundle from your data files."""
+    
+    # Parse lightning talks
+    talks = []
+    with open(talks_csv) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("Track") == track_name:  # Filter by track
+                talks.append({
+                    "title": row["Title"],
+                    "authors": [{"name": row["Author"], "affiliation": row["Institution"]}],
+                    "abstract": row["Abstract"]
+                })
+    
+    # Parse attendees
+    attendees = []
+    with open(attendees_csv) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            attendees.append({
+                "name": f"{row['First']} {row['Last']}",
+                "organization": row["Organization"]
+            })
+    
+    # Add talk authors to attendees
+    attendee_names = {a["name"] for a in attendees}
+    for talk in talks:
+        for author in talk["authors"]:
+            if author["name"] not in attendee_names:
+                attendees.append({
+                    "name": author["name"],
+                    "organization": author["affiliation"]
+                })
+                attendee_names.add(author["name"])
+    
+    # Read notes
+    with open(notes_txt) as f:
+        notes = f.read()
+    
+    # Create bundle
+    bundle = {
+        "track": {"id": "track-1", "name": track_name, "room": "TBD"},
+        "sessions": [{
+            "id": "session-1",
+            "title": f"{track_name} Session",
+            "slot": "2025-07-30T09:00",
+            "leaders": [],
+            "lightning_talks": talks,
+            "attendees": attendees,
+            "notes": notes
+        }],
+        "sources": [talks_csv, attendees_csv, notes_txt]
+    }
+    
+    # Save bundle
+    Path("data/bundles").mkdir(parents=True, exist_ok=True)
+    output = "data/bundles/track_bundle.json"
+    with open(output, "w") as f:
+        json.dump(bundle, f, indent=2)
+    
+    return output
 
-# Create bundle (adapt create_track1_bundle.py)
-# Then generate report
+# Usage
+create_bundle(
+    "data/lightning_talks.csv",
+    "data/attendees.csv", 
+    "data/notes.txt",
+    "Track-1"
+)
 ```
 
 ## Command Line Options
@@ -163,7 +232,7 @@ python3 -m tpc_reporter.cli check draft.md BUNDLE_FILE.json -o final.md
 
 ## Complete Example Workflow
 
-Here's a full example using Track-1 data:
+Here's the full process:
 
 ```bash
 # 1. Download Google Drive files
@@ -176,15 +245,16 @@ download_sheet("YOUR_ATTENDEES_URL", "data/track1/attendees.csv")
 download_doc("YOUR_NOTES_URL", "data/track1/notes.txt")
 '
 
-# 2. Create bundle (adapt create_track1_bundle.py for your data)
-python3 create_track1_bundle.py
-# Output: data/bundles/track1_bundle.json
+# 2. Create bundle using the template code above
+# Save it as create_my_bundle.py and run:
+python3 create_my_bundle.py
+# Output: data/bundles/track_bundle.json
 
 # 3. Generate report
-python3 -m tpc_reporter.cli run data/bundles/track1_bundle.json -o output/track1_report.md
+python3 -m tpc_reporter.cli run data/bundles/track_bundle.json -o output/track_report.md
 
 # 4. Review the report
-cat output/track1_report.md
+cat output/track_report.md
 ```
 
 ## Google Drive Setup
