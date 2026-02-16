@@ -140,6 +140,13 @@ class LLMClient:
             if "error" in response:
                 raise RuntimeError(f"LLM error: {response['error']}")
 
+            # Debug: Check response structure
+            if "choices" not in response:
+                raise RuntimeError(
+                    f"Unexpected NIM response format. Keys: {list(response.keys())}\n"
+                    f"Full response: {json.dumps(response, indent=2)[:500]}"
+                )
+
             return response["choices"][0]["message"]["content"]
 
         except subprocess.TimeoutExpired:

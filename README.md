@@ -43,62 +43,183 @@ Each step is a standalone Python module. No framework dependencies.
 ### 1. Install
 
 ```bash
-pip install -e .
+pip install -e ".[scraper]"  # Installs with Google Drive and scraping support
 ```
 
-### 2. Configure
+### 2. Configure LLM Endpoint
 
-```bash
-cp config/secrets.yaml.template config/secrets.yaml
-# Add your OpenAI API key to secrets.yaml
+Edit `configuration.yaml` to set your LLM provider:
+```yaml
+active_endpoint: "openai"  # or "nim_spark" for local NVIDIA NIM
 ```
 
-### 3. Scrape the conference website
-
-```bash
-tpc_reporter scrape --url https://tpc25.org/sessions/ --output data/tpc25/conference.json
+Create `secrets.yaml` with your API key:
+```yaml
+OPENAI_API_KEY: "sk-your-key-here"
 ```
 
-### 4. Collect Google Drive data
+### 3. Get Your Google Drive URLs
 
-```bash
-tpc_reporter collect --drive-folder "https://drive.google.com/drive/folders/..." --output data/tpc25/track_inputs/
+You'll need three publicly shared Google Drive URLs:
+1. **Lightning talks sheet**: Google Sheet with columns for Title, Authors, Institution, Abstract, Track
+2. **Attendees sheet**: Google Sheet with First, Last, Organization columns  
+3. **Notes document**: Google Doc with session notes and discussion outcomes
+
+### 4. Download Google Drive Data
+
+The `gdrive.py` module can download directly from Google Drive URLs:
+
+```python
+from tpc_reporter.gdrive import download_sheet, download_doc
+
+# Download files
+download_sheet("https://docs.google.com/spreadsheets/d/YOUR_ID/edit", "lightning_talks.csv")
+download_sheet("https://docs.google.com/spreadsheets/d/YOUR_ID/edit", "attendees.csv")
+download_doc("https://docs.google.com/document/d/YOUR_ID/edit", "notes.txt")
 ```
 
-### 5. Generate all reports
-
+Or use the test script as a template:
 ```bash
-tpc_reporter generate-all --conference data/tpc25/conference.json --inputs data/tpc25/track_inputs/ --output output/tpc25/
+python3 test_downloads.py  # Modify with your URLs
 ```
 
-Or generate a single track:
+### 5. Create Track Bundle
+
+Assemble the downloaded data into a track bundle. Use `create_track1_bundle.py` as a template:
+
+```python
+# Modify paths to your downloaded files
+python3 create_track_bundle.py
+```
+
+This creates `data/bundles/track_bundle.json` with:
+- Lightning talks filtered by track
+- Attendees list (merged with talk authors)
+- Session notes
+
+### 6. Generate Report
 
 ```bash
-tpc_reporter generate --track workflows --conference data/tpc25/conference.json --inputs data/tpc25/track_inputs/ --output output/tpc25/
+# Generate report from bundle
+python3 -m tpc_reporter.cli run data/bundles/track_bundle.json -o output/track_report.md
+```
+
+This runs:
+1. **Generation**: Creates draft report using LLM
+2. **Verification**: Checks for hallucinations against source data
+3. **Output**: Saves final report with any flags marked
+
+## Working with Different Input Files
+
+### Option 1: Modify the Bundle Script
+
+Edit `create_track_bundle.py` to point to your files:
+```python
+# Change these paths
+with open("YOUR_LIGHTNING_TALKS.csv", "r") as f:
+    # ...
+with open("YOUR_ATTENDEES.csv", "r") as f:
+    # ...
+```
+
+### Option 2: Use Python Directly
+
+```python
+import json
+from tpc_reporter.gdrive import download_sheet, download_doc
+
+# Download your files
+download_sheet("YOUR_TALKS_URL", "talks.csv")
+download_sheet("YOUR_ATTENDEES_URL", "attendees.csv") 
+download_doc("YOUR_NOTES_URL", "notes.txt")
+
+# Create bundle (adapt create_track1_bundle.py)
+# Then generate report
+```
+
+## Command Line Options
+
+### Generate Report from Bundle
+```bash
+python3 -m tpc_reporter.cli run BUNDLE_FILE.json [OPTIONS]
+
+Options:
+  -o, --output PATH         Output file for final report
+  --draft-output PATH       Save draft before checking
+  --max-tokens INTEGER      Maximum tokens for generation (default: 8000)
+  --endpoint TEXT           Override LLM endpoint from config
+  --skip-check             Skip hallucination checking
+```
+
+### Generate Without Checking
+```bash
+python3 -m tpc_reporter.cli generate BUNDLE_FILE.json -o draft.md
+```
+
+### Check Existing Draft
+```bash
+python3 -m tpc_reporter.cli check draft.md BUNDLE_FILE.json -o final.md
+```
+
+## Complete Example Workflow
+
+Here's a full example using Track-1 data:
+
+```bash
+# 1. Download Google Drive files
+python3 -c '
+from tpc_reporter.gdrive import download_sheet, download_doc
+import os
+os.makedirs("data/track1", exist_ok=True)
+download_sheet("YOUR_TALKS_URL", "data/track1/talks.csv")
+download_sheet("YOUR_ATTENDEES_URL", "data/track1/attendees.csv")
+download_doc("YOUR_NOTES_URL", "data/track1/notes.txt")
+'
+
+# 2. Create bundle (adapt create_track1_bundle.py for your data)
+python3 create_track1_bundle.py
+# Output: data/bundles/track1_bundle.json
+
+# 3. Generate report
+python3 -m tpc_reporter.cli run data/bundles/track1_bundle.json -o output/track1_report.md
+
+# 4. Review the report
+cat output/track1_report.md
 ```
 
 ## Google Drive Setup
 
-Create one shared folder per track:
+### Required Google Drive Files
 
-```
-TPC25 Track Reports/
-  ├── Workflows/
-  │   ├── Session1_Attendees    (Google Sheet)
-  │   ├── Session1_Notes        (Google Doc)
-  │   ├── Session2_Attendees    (Google Sheet)
-  │   └── Session2_Notes        (Google Doc)
-  ├── Initiatives/
-  │   └── ...
-  └── ...
-```
+You need three publicly shared files per track:
 
-**Attendees sheets**: Two columns — `Name` and `Organization`
+1. **Lightning Talks Sheet** - Columns:
+   - Timestamp
+   - Email Address
+   - Your full name
+   - Your institution  
+   - Your job title or position in your institution
+   - Title of your proposed lightning talk
+   - Abstract of your proposed lightning talk (80-100 words)
+   - Track (e.g., "Track-1", "Track-2")
 
-**Notes docs**: Free-form text from session scribes. Suggested structure:
-- Key discussion points
-- Questions raised
-- Action items / outcomes
+2. **Attendees Sheet** - Columns:
+   - First
+   - Last
+   - Organization
+
+3. **Notes Document** - Free-form text with:
+   - Key discussion points
+   - Questions raised
+   - Action items / outcomes
+   - Decisions made
+
+### Make Files Public
+
+For each file:
+1. Right-click → Share
+2. Change to "Anyone with the link can view"
+3. Copy the share URL
 
 ## Outputs
 
@@ -114,21 +235,45 @@ output/tpc25/
 
 Each report contains `[FLAG: ...]` annotations where the hallucination checker found potential issues. Track organizers review and finalize these drafts.
 
-## Configuration
+## Configuration Files
 
-Edit `config/configuration.yaml` to set your LLM endpoint:
+### configuration.yaml
+
+Edit `configuration.yaml` in the project root to set your LLM endpoint:
 
 ```yaml
 active_endpoint: "openai"   # or "nim_spark" for local NVIDIA NIM
 
 endpoints:
   openai:
+    type: "openai"
+    base_url: "https://api.openai.com/v1"
     model: "gpt-4o-mini"
-    api_key_env: "OPENAI_API_KEY"
+    api_key_env: "OPENAI_API_KEY"  # Loaded from secrets.yaml
     parameters:
       temperature: 0.3
       max_tokens: 4000
+      
+  nim_spark:
+    type: "nim_ssh"
+    ssh_host: "your-nim-host"  # SSH hostname for NIM server
+    base_url: "http://localhost:8000/v1"
+    model: "meta/llama-3.1-8b-instruct"
+    parameters:
+      temperature: 0.3
+      max_tokens: 3000  # Smaller for 8B models
 ```
+
+### secrets.yaml
+
+Create `secrets.yaml` in the project root:
+
+```yaml
+# OpenAI API Key
+OPENAI_API_KEY: "sk-your-key-here"
+```
+
+**Note**: `secrets.yaml` is gitignored and never committed.
 
 ## Architecture
 
@@ -155,6 +300,43 @@ pytest tests/
 # Generate a single track report for development
 python -m tpc_reporter.generator --bundle data/tpc25/bundles/workflows.json --output output/tpc25/workflows_draft.md
 ```
+
+## Troubleshooting
+
+### "Configuration file not found"
+
+Make sure `configuration.yaml` and `secrets.yaml` exist in the project root:
+```bash
+ls -la configuration.yaml secrets.yaml
+```
+
+### "OPENAI_API_KEY not found"
+
+Either:
+1. Add to `secrets.yaml`: `OPENAI_API_KEY: "sk-..."`
+2. Or export as environment variable: `export OPENAI_API_KEY="sk-..."`
+
+### "NIM request timed out"
+
+Local NIM models (especially 8B) are slower. Either:
+1. Reduce `max_tokens` in config (e.g., 2000)
+2. Use OpenAI for faster generation
+3. Process fewer talks at once
+
+### "max_tokens too large" with NIM
+
+Llama 3.1 8B has 8192 total context. If your input is 4000 tokens, max_tokens must be < 4192.
+Reduce in `configuration.yaml`:
+```yaml
+max_tokens: 3000  # Leave room for input
+```
+
+### Google Drive downloads fail
+
+Make sure files are publicly shared:
+1. Right-click file → Share
+2. Set to "Anyone with the link can view"
+3. Use the share URL (not the browser URL)
 
 ## Future: Agentic Mode (Phase 2)
 

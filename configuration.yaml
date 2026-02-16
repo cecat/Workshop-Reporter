@@ -2,7 +2,7 @@
 # This file configures model endpoints and application settings
 
 # Active LLM endpoint (choose one: openai or nim_spark)
-active_endpoint: "nim_spark"
+active_endpoint: "openai"
 
 # LLM Endpoint Configurations
 endpoints:
@@ -28,7 +28,7 @@ endpoints:
     api_key_env: null
     parameters:
       temperature: 0.3
-      max_tokens: 4000
+      max_tokens: 3000  # Reduced to fit 8192 context window
       top_p: 1.0
   
   # NVIDIA NIM on spark-ts (via SSH tunnel)
