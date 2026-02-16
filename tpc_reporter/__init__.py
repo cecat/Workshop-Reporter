@@ -37,9 +37,9 @@ from tpc_reporter.generator import (
 )
 from tpc_reporter.llm_client import LLMClient, create_llm_client
 from tpc_reporter.scraper import (
+    ScrapeResult,
     Session,
     Speaker,
-    ScrapeResult,
     scrape_sessions,
     scrape_site,
     scrape_speakers,

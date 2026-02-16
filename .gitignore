@@ -28,3 +28,7 @@ dist/
 build/
 .eggs/
 
+# Test artifacts
+test_downloads/
+test_real_urls.py
+
