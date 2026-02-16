@@ -42,15 +42,17 @@ Each step is a standalone Python module. No framework dependencies.
 
 ### 1. Install
 
+Install Google Drive and scraping support.
+
 ```bash
-pip install -e ".[scraper]"  # Installs with Google Drive and scraping support
+pip install -e ".[scraper]"  
 ```
 
 ### 2. Configure LLM Endpoint
 
-Edit `configuration.yaml` to set your LLM provider:
+Edit `configuration.yaml` to set your LLM provider, e.g.:
 ```yaml
-active_endpoint: "openai"  # or "nim_spark" for local NVIDIA NIM
+active_endpoint: "openai"  
 ```
 
 Create `secrets.yaml` with your API key:
@@ -78,9 +80,9 @@ download_sheet("https://docs.google.com/spreadsheets/d/YOUR_ID/edit", "attendees
 download_doc("https://docs.google.com/document/d/YOUR_ID/edit", "notes.txt")
 ```
 
-Or use the test script as a template:
+Or use the test script as a template (modify with your URLs):
 ```bash
-python3 test_downloads.py  # Modify with your URLs
+python3 test_downloads.py  
 ```
 
 ### 5. Create Track Bundle
@@ -115,8 +117,9 @@ See the repository's test scripts for examples of parsing Google Drive data into
 
 ### 6. Generate Report
 
+Generate report from bundle:
+
 ```bash
-# Generate report from bundle
 python3 -m tpc_reporter.cli run data/bundles/track_bundle.json -o output/track_report.md
 ```
 
@@ -309,24 +312,24 @@ Each report contains `[FLAG: ...]` annotations where the hallucination checker f
 
 ### configuration.yaml
 
-Edit `configuration.yaml` in the project root to set your LLM endpoint:
+Edit `configuration.yaml` in the project root to set your LLM endpoint. Here we are using OpenAI as an example.  The OPENAI_API_KEY will need to be in your secrets.yaml file.  If you are using a local model the example here is for a NVIDIA/Dell Spark using NIM to serve a llama series model.
 
 ```yaml
-active_endpoint: "openai"   # or "nim_spark" for local NVIDIA NIM
+active_endpoint: "openai"  
 
 endpoints:
   openai:
     type: "openai"
     base_url: "https://api.openai.com/v1"
     model: "gpt-4o-mini"
-    api_key_env: "OPENAI_API_KEY"  # Loaded from secrets.yaml
+    api_key_env: "OPENAI_API_KEY"  
     parameters:
       temperature: 0.3
       max_tokens: 4000
       
   nim_spark:
     type: "nim_ssh"
-    ssh_host: "your-nim-host"  # SSH hostname for NIM server
+    ssh_host: "your-nim-host"  
     base_url: "http://localhost:8000/v1"
     model: "meta/llama-3.1-8b-instruct"
     parameters:
@@ -363,11 +366,10 @@ No frameworks. Just Python functions:
 
 See [PLAN.md](./PLAN.md) for the hackathon implementation plan and [ANALYSIS.md](./ANALYSIS.md) for architectural decisions.
 
+To run tests and generate a single conference track report for development
 ```bash
 # Run tests
 pytest tests/
-
-# Generate a single track report for development
 python -m tpc_reporter.generator --bundle data/tpc25/bundles/workflows.json --output output/tpc25/workflows_draft.md
 ```
 
