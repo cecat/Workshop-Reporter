@@ -67,6 +67,8 @@ You'll need three publicly shared Google Drive URLs:
 2. **Attendees sheet**: Google Sheet with First, Last, Organization columns  
 3. **Notes document**: Google Doc with session notes and discussion outcomes
 
+Note: a CSV file uploaded to Google Drive needs to be opened and saved as a Google Sheets file.
+
 ### 4. Download Google Drive Data
 
 The `gdrive.py` module can download directly from Google Drive URLs:
