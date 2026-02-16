@@ -83,7 +83,10 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP"]
-ignore = ["E501"]  # Line too long (handled by black)
+ignore = [
+    "E501",  # Line too long (handled by black)
+    "E402",  # Module level import not at top (conflicts with __future__ + docstring)
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["tpc_reporter"]

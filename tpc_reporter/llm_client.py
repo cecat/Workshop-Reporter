@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 LLM client wrapper for Workshop-Reporter.
 

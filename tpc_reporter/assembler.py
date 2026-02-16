@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Data assembler for TPC Workshop Reporter.
 

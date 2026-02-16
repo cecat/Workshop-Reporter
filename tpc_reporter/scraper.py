@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Website scraper for TPC Workshop Reporter.
 

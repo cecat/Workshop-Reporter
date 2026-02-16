@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Hallucination checker for TPC Workshop Reporter.
 

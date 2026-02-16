@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Configuration and secrets loader for Workshop-Reporter.
 
